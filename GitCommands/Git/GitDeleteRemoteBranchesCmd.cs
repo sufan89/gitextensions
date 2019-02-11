@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using GitUIPluginInterfaces;
 
 namespace GitCommands.Git
 {
     public sealed class GitDeleteRemoteBranchesCmd : GitCommand
     {
-        private readonly string _remote;
         private readonly List<string> _branches;
+        private readonly string _remote;
 
         public GitDeleteRemoteBranchesCmd(string remote, IEnumerable<string> branchLocalNames)
         {
@@ -25,29 +26,16 @@ namespace GitCommands.Git
             _branches = branchLocalNames.ToList();
         }
 
-        public override string GitComandName()
-        {
-            return "push";
-        }
+        public override bool AccessesRemote => true;
+        public override bool ChangesRepoState => true;
 
-        protected override IEnumerable<string> CollectArguments()
+        protected override ArgumentString BuildArguments()
         {
-            yield return _remote;
-
-            foreach (var branch in _branches)
+            return new GitArgumentBuilder("push")
             {
-                yield return " :refs/heads/\"" + branch + "\"";
-            }
-        }
-
-        public override bool AccessesRemote()
-        {
-            return true;
-        }
-
-        public override bool ChangesRepoState()
-        {
-            return true;
+                _remote,
+                _branches.Select(branch => $":refs/heads/{branch.Quote()}")
+            };
         }
     }
 }

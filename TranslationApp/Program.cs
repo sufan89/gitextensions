@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands.Utils;
 using GitUI;
+using Microsoft.VisualStudio.Threading;
 using ResourceManager;
 
 namespace TranslationApp
@@ -30,14 +33,25 @@ namespace TranslationApp
                 NBug.Settings.MaxQueuedReports = 10;
                 NBug.Settings.StopReportingAfter = 90;
                 NBug.Settings.SleepBeforeSend = 30;
-                NBug.Settings.StoragePath = "WindowsTemp";
+                NBug.Settings.StoragePath = NBug.Enums.StoragePath.WindowsTemp;
 
-                AppDomain.CurrentDomain.UnhandledException += NBug.Handler.UnhandledException;
-                Application.ThreadException += NBug.Handler.ThreadException;
+                if (!Debugger.IsAttached)
+                {
+                    AppDomain.CurrentDomain.UnhandledException += NBug.Handler.UnhandledException;
+                    Application.ThreadException += NBug.Handler.ThreadException;
+                }
+            }
+
+            // This form created for obtain UI synchronization context only
+            using (new Form())
+            {
+                // Store the shared JoinableTaskContext
+                ThreadHelper.JoinableTaskContext = new JoinableTaskContext();
             }
 
             // required for translation
             PluginRegistry.Initialize();
+
             string[] args = Environment.GetCommandLineArgs();
             if (args.Length == 1)
             {
@@ -57,6 +71,11 @@ namespace TranslationApp
         {
             using (new WaitCursorScope())
             {
+                // we will be instantiating a number of forms using their default .ctors
+                // this would lead to InvalidOperationException thrown in GitModuleForm()
+                // set the flag that will stop this from happening
+                GitModuleForm.IsUnitTestActive = true;
+
                 var neutralItems = TranslationHelpers.LoadNeutralItems();
                 string filename = Path.Combine(Translator.GetTranslationDir(), "English.xlf");
                 TranslationHelpers.SaveTranslation(null, neutralItems, filename);

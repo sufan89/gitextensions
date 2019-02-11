@@ -6,12 +6,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using DeleteUnusedBranches.Properties;
+using GitCommands;
 using GitExtUtils.GitUI;
 using GitUI;
 using GitUIPluginInterfaces;
 using Microsoft.VisualStudio.Threading;
 using ResourceManager;
-
 namespace DeleteUnusedBranches
 {
     public sealed partial class DeleteUnusedBranchesForm : GitExtensionsFormBase
@@ -22,7 +22,7 @@ namespace DeleteUnusedBranches
         private readonly TranslationString _dangerousAction = new TranslationString("DANGEROUS ACTION!\nBranches will be deleted on the remote '{0}'. This can not be undone.\nAre you sure you want to continue?");
         private readonly TranslationString _deletingBranches = new TranslationString("Deleting branches...");
         private readonly TranslationString _deletingUnmergedBranches = new TranslationString("Deleting unmerged branches will result in dangling commits. Use with caution!");
-        private readonly TranslationString _chooseBrancesToDelete = new TranslationString("Choose branches to delete. Only branches that are fully merged in '{0}' will be deleted.");
+        private readonly TranslationString _chooseBranchesToDelete = new TranslationString("Choose branches to delete. Only branches that are fully merged in '{0}' will be deleted.");
         private readonly TranslationString _pressToSearch = new TranslationString("Press '{0}' to search for branches to delete.");
         private readonly TranslationString _cancel = new TranslationString("Cancel");
         private readonly TranslationString _searchBranches = new TranslationString("Search branches");
@@ -45,20 +45,19 @@ namespace DeleteUnusedBranches
 
             InitializeComponent();
 
-            deleteDataGridViewCheckBoxColumn.Width = DpiUtil.Scale(50);
+            _NO_TRANSLATE_deleteDataGridViewCheckBoxColumn.Width = DpiUtil.Scale(50);
             dateDataGridViewTextBoxColumn.Width = DpiUtil.Scale(175);
             Author.Width = DpiUtil.Scale(91);
 
-            Translate();
             imgLoading.Image = Resources.loadingpanel;
 
-            deleteDataGridViewCheckBoxColumn.DataPropertyName = nameof(Branch.Delete);
+            _NO_TRANSLATE_deleteDataGridViewCheckBoxColumn.DataPropertyName = nameof(Branch.Delete);
             nameDataGridViewTextBoxColumn.DataPropertyName = nameof(Branch.Name);
             dateDataGridViewTextBoxColumn.DataPropertyName = nameof(Branch.Date);
             Author.DataPropertyName = nameof(Branch.Author);
             Message.DataPropertyName = nameof(Branch.Message);
 
-            this.AdjustForDpiScaling();
+            InitializeComplete();
 
             ThreadHelper.JoinableTaskFactory.RunAsync(() => RefreshObsoleteBranchesAsync());
         }
@@ -78,7 +77,7 @@ namespace DeleteUnusedBranches
             includeUnmergedBranches.Checked = _settings.IncludeUnmergedBranchesFlag;
 
             checkBoxHeaderCell.CheckBoxClicked += CheckBoxHeader_OnCheckBoxClicked;
-            deleteDataGridViewCheckBoxColumn.HeaderText = string.Empty;
+            _NO_TRANSLATE_deleteDataGridViewCheckBoxColumn.HeaderText = string.Empty;
 
             BranchesGrid.DataSource = _branches;
         }
@@ -89,7 +88,13 @@ namespace DeleteUnusedBranches
             {
                 context.CancellationToken.ThrowIfCancellationRequested();
 
-                var commitLog = context.Commands.RunGitCmd(string.Concat("log --pretty=%ci\n%an\n%s ", branchName, "^1..", branchName)).Split('\n');
+                var args = new GitArgumentBuilder("log")
+                {
+                    "--pretty=%ci\n%an\n%s",
+                    $"{branchName}^1..{branchName}"
+                };
+
+                var commitLog = context.Commands.GitExecutable.GetOutput(args).Split('\n');
                 DateTime.TryParse(commitLog[0], out var commitDate);
                 var authorName = commitLog.Length > 1 ? commitLog[1] : string.Empty;
                 var message = commitLog.Length > 2 ? commitLog[2] : string.Empty;
@@ -113,7 +118,14 @@ namespace DeleteUnusedBranches
             var regex = string.IsNullOrEmpty(context.RegexFilter) ? null : new Regex(context.RegexFilter, options);
             bool regexMustMatch = !context.RegexDoesNotMatch;
 
-            string[] branches = context.Commands.RunGitCmd("branch" + (context.IncludeRemotes ? " -r" : "") + (context.IncludeUnmerged ? "" : " --merged " + context.ReferenceBranch))
+            var args = new GitArgumentBuilder("branch")
+            {
+                 { context.IncludeRemotes, "-r" },
+                 { !context.IncludeUnmerged, "--merged" },
+                 context.ReferenceBranch
+            };
+
+            string[] branches = context.Commands.GitExecutable.GetOutput(args)
                 .Split('\n')
                 .Where(branchName => !string.IsNullOrEmpty(branchName))
                 .Select(branchName => branchName.Trim('*', ' ', '\n', '\r'))
@@ -130,7 +142,7 @@ namespace DeleteUnusedBranches
             var selectedBranches = _branches.Where(branch => branch.Delete).ToList();
             if (selectedBranches.Count == 0)
             {
-                MessageBox.Show(string.Format(_selectBranchesToDelete.Text, deleteDataGridViewCheckBoxColumn.HeaderText), _deleteCaption.Text);
+                MessageBox.Show(string.Format(_selectBranchesToDelete.Text, _NO_TRANSLATE_deleteDataGridViewCheckBoxColumn.HeaderText), _deleteCaption.Text);
                 return;
             }
 
@@ -163,19 +175,29 @@ namespace DeleteUnusedBranches
             ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
             {
                 await TaskScheduler.Default.SwitchTo(alwaysYield: true);
-
-                if (remoteBranches.Count > 0)
+                foreach (var remoteBranch in remoteBranches)
                 {
-                    // TODO: use GitCommandHelpers.PushMultipleCmd after moving this window to GE (see FormPush as example)
+                    // Delete branches one by one, because it is possible one fails
                     var remoteBranchNameOffset = remoteBranchPrefix.Length;
-                    var remoteBranchNames = string.Join(" ", remoteBranches.Select(branch => ":" + branch.Name.Substring(remoteBranchNameOffset)));
-                    _gitCommands.RunGitCmd(string.Format("push {0} {1}", remoteName, remoteBranchNames));
+                    var args = new GitArgumentBuilder("push")
+                    {
+                        remoteName,
+                        $":{remoteBranch.Name.Substring(remoteBranchNameOffset)}"
+                    };
+                    _gitCommands.GitExecutable.GetOutput(args);
                 }
 
-                if (localBranches.Count > 0)
+                foreach (var localBranch in localBranches)
                 {
-                    var localBranchNames = string.Join(" ", localBranches.Select(branch => branch.Name));
-                    _gitCommands.RunGitCmd("branch -d " + localBranchNames);
+                    var args = new GitArgumentBuilder("branch")
+                    {
+                        "-d",
+                        localBranch.Name
+                    };
+                    _gitCommands.GitExecutable.GetOutput(args);
+
+                    // Delete branches one by one, because it is possible one fails
+                    _gitCommands.GitExecutable.GetOutput(args);
                 }
 
                 await this.SwitchToMainThreadAsync();
@@ -204,7 +226,7 @@ namespace DeleteUnusedBranches
 
         private void ClearResults(object sender, EventArgs e)
         {
-            instructionLabel.Text = string.Format(_chooseBrancesToDelete.Text, mergedIntoBranch.Text);
+            instructionLabel.Text = string.Format(_chooseBranchesToDelete.Text, mergedIntoBranch.Text);
             lblStatus.Text = string.Format(_pressToSearch.Text, RefreshBtn.Text);
             _branches.Clear();
             _branches.ResetBindings();
@@ -223,7 +245,7 @@ namespace DeleteUnusedBranches
             {
                 DataGridViewRow row = BranchesGrid.Rows[i];
                 DataGridViewCheckBoxCell cell =
-                    (DataGridViewCheckBoxCell)row.Cells[nameof(deleteDataGridViewCheckBoxColumn)];
+                    (DataGridViewCheckBoxCell)row.Cells[nameof(_NO_TRANSLATE_deleteDataGridViewCheckBoxColumn)];
                 cell.Value = e.Checked;
             }
 
@@ -261,8 +283,8 @@ namespace DeleteUnusedBranches
                 mergedIntoBranch.Text,
                 _NO_TRANSLATE_Remote.Text,
                 useRegexFilter.Checked ? regexFilter.Text : null,
-                useRegexCaseInsensitive.Checked ? useRegexCaseInsensitive.Checked : false,
-                regexDoesNotMatch.Checked ? regexDoesNotMatch.Checked : false,
+                useRegexCaseInsensitive.Checked,
+                regexDoesNotMatch.Checked,
                 TimeSpan.FromDays((int)olderThanDays.Value),
                 _refreshCancellation.Token);
 
@@ -320,7 +342,7 @@ namespace DeleteUnusedBranches
             return string.Format(_branchesSelected.Text, _branches.Count(b => b.Delete), _branches.Count);
         }
 
-        private struct RefreshContext
+        private readonly struct RefreshContext
         {
             public RefreshContext(IGitModule commands, bool includeRemotes, bool includeUnmerged, string referenceBranch,
                 string remoteRepositoryName, string regexFilter, bool regexIgnoreCase, bool regexDoesNotMatch,

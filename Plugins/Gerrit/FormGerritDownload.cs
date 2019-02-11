@@ -29,7 +29,7 @@ namespace Gerrit
             : base(uiCommand)
         {
             InitializeComponent();
-            Translate();
+            InitializeComplete();
         }
 
         private void DownloadClick(object sender, EventArgs e)
@@ -83,10 +83,10 @@ namespace Gerrit
                 topic = topicNode == null ? change : (string)topicNode.Value;
             }
 
-            string authorValue = (string)((JValue)reviewInfo["owner"]["name"]).Value;
+            var authorValue = (string)((JValue)reviewInfo["owner"]["name"]).Value;
             string author = Regex.Replace(authorValue.ToLowerInvariant(), "\\W+", "_");
             string branchName = "review/" + author + "/" + topic;
-            string refspec = (string)((JValue)reviewInfo["currentPatchSet"]["ref"]).Value;
+            var refspec = (string)((JValue)reviewInfo["currentPatchSet"]["ref"]).Value;
 
             var fetchCommand = UICommands.CreateRemoteCommand();
 
@@ -119,7 +119,7 @@ namespace Gerrit
 
                         var resetCommand = UICommands.CreateRemoteCommand();
 
-                        resetCommand.CommandText = GitCommandHelpers.ResetHardCmd("FETCH_HEAD");
+                        resetCommand.CommandText = GitCommandHelpers.ResetCmd(ResetMode.Hard, "FETCH_HEAD");
 
                         if (!RunCommand(resetCommand, change))
                         {
@@ -148,7 +148,7 @@ namespace Gerrit
         private static string FetchCommand(string remote, string remoteBranch)
         {
             var progressOption = "";
-            if (GitCommandHelpers.VersionInUse.FetchCanAskForProgress)
+            if (GitVersion.Current.FetchCanAskForProgress)
             {
                 progressOption = "--progress ";
             }
@@ -208,7 +208,7 @@ namespace Gerrit
 
         private void FormGerritDownloadLoad(object sender, EventArgs e)
         {
-            _NO_TRANSLATE_Remotes.DataSource = Module.GetRemotes(true);
+            _NO_TRANSLATE_Remotes.DataSource = Module.GetRemoteNames();
 
             _currentBranchRemote = Settings.DefaultRemote;
 
@@ -224,7 +224,7 @@ namespace Gerrit
         private void AddRemoteClick(object sender, EventArgs e)
         {
             UICommands.StartRemotesDialog();
-            _NO_TRANSLATE_Remotes.DataSource = Module.GetRemotes(true);
+            _NO_TRANSLATE_Remotes.DataSource = Module.GetRemoteNames();
         }
     }
 }

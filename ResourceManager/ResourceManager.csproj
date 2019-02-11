@@ -45,6 +45,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="SmartFormat.NET" Version="2.0.0" />
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="..\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
@@ -52,10 +55,11 @@
     <Compile Include="CommitDataRenders\CommitDataHeaderRenderer.cs" />
     <Compile Include="CommitDataRenders\DateFormatter.cs" />
     <Compile Include="CommitDataRenders\TabbedHeaderRenderStyleProvider.cs" />
+    <Compile Include="GitExtensionsControlInitialiser.cs" />
     <Compile Include="GitExtensionsFormBase.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="GitExtensionsUserControl.cs">
+    <Compile Include="GitExtensionsControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="GitPluginBase.cs" />
@@ -65,6 +69,12 @@
     <Compile Include="LocalizationHelpers.cs" />
     <Compile Include="CommitDataRenders\IHeaderRenderStyleProvider.cs" />
     <Compile Include="CommitDataRenders\MonospacedHeaderRenderStyleProvider.cs" />
+    <Compile Include="NativeMethods.cs" />
+    <Compile Include="Properties\Resources.Designer.cs">
+      <DependentUpon>Resources.resx</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+    </Compile>
     <Compile Include="Strings.cs" />
     <Compile Include="Translate.cs" />
     <Compile Include="ITranslation.cs" />
@@ -73,7 +83,7 @@
     <Compile Include="CommitDataRenders\MonospacedHeaderLabelFormatter.cs" />
     <Compile Include="CommitDataRenders\TabbedHeaderLabelFormatter.cs" />
     <Compile Include="CommitDataRenders\IHeaderLabelFormatter.cs" />
-    <Compile Include="Xliff\TranslationUtl.cs" />
+    <Compile Include="Xliff\TranslationUtil.cs" />
     <Compile Include="TranslationString.cs" />
     <Compile Include="Translator.cs" />
     <Compile Include="Xliff\TranslationFile.cs" />
@@ -99,8 +109,13 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="GitExtensionsUserControl.resx">
-      <DependentUpon>GitExtensionsUserControl.cs</DependentUpon>
+    <EmbeddedResource Include="GitExtensionsControl.resx">
+      <DependentUpon>GitExtensionsControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

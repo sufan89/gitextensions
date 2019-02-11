@@ -1,6 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using GitCommands.Git;
+using GitUIPluginInterfaces;
 using JetBrains.Annotations;
 
 namespace GitCommands
@@ -177,6 +179,58 @@ namespace GitCommands
         }
 
         /// <summary>
+        /// Adds the git argument syntax for members of the <see cref="CleanMode"/> enum.
+        /// </summary>
+        /// <param name="builder">The <see cref="ArgumentBuilder"/> to add arguments to.</param>
+        /// <param name="mode">The enum member to add to the builder.</param>
+        public static void Add(this ArgumentBuilder builder, CleanMode mode)
+        {
+            builder.Add(GetArgument());
+
+            string GetArgument()
+            {
+                switch (mode)
+                {
+                    case CleanMode.OnlyNonIgnored:
+                        return "";
+                    case CleanMode.OnlyIgnored:
+                        return "-X";
+                    case CleanMode.All:
+                        return "-x";
+                    default:
+                        throw new InvalidEnumArgumentException(nameof(mode), (int)mode, typeof(CleanMode));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Adds the git argument syntax for members of the <see cref="ResetMode"/> enum.
+        /// </summary>
+        /// <param name="builder">The <see cref="ArgumentBuilder"/> to add arguments to.</param>
+        /// <param name="mode">The enum member to add to the builder.</param>
+        public static void Add(this ArgumentBuilder builder, ResetMode mode)
+        {
+            builder.Add(GetArgument());
+
+            string GetArgument()
+            {
+                switch (mode)
+                {
+                    case ResetMode.ResetIndex:
+                        return "";
+                    case ResetMode.Soft:
+                        return "--soft";
+                    case ResetMode.Mixed:
+                        return "--mixed";
+                    case ResetMode.Hard:
+                        return "--hard";
+                    default:
+                        throw new InvalidEnumArgumentException(nameof(mode), (int)mode, typeof(ResetMode));
+                }
+            }
+        }
+
+        /// <summary>
         /// Adds the git argument syntax for members of the <see cref="GitBisectOption"/> enum.
         /// </summary>
         /// <param name="builder">The <see cref="ArgumentBuilder"/> to add arguments to.</param>
@@ -198,6 +252,52 @@ namespace GitCommands
                     default:
                         throw new InvalidEnumArgumentException(nameof(option), (int)option, typeof(GitBisectOption));
                 }
+            }
+        }
+
+        /// <summary>
+        /// Adds <paramref name="objectId"/> as a SHA-1 argument.
+        /// </summary>
+        /// <remarks>
+        /// If <paramref name="objectId"/> is <c>null</c> then no change is made to the arguments.
+        /// </remarks>
+        /// <param name="builder">The <see cref="ArgumentBuilder"/> to add arguments to.</param>
+        /// <param name="objectId">The SHA-1 object ID to add to the builder, or <c>null</c>.</param>
+        /// <exception cref="ArgumentException"><paramref name="objectId"/> represents an artificial commit.</exception>
+        public static void Add(this ArgumentBuilder builder, [CanBeNull] ObjectId objectId)
+        {
+            if (objectId == null)
+            {
+                return;
+            }
+
+            if (objectId.IsArtificial)
+            {
+                throw new ArgumentException("Unexpected artificial commit in Git command: " + objectId);
+            }
+
+            builder.Add(objectId.ToString());
+        }
+
+        /// <summary>
+        /// Adds a sequence of <paramref name="objectIds"/> to the builder.
+        /// </summary>
+        /// <remarks>
+        /// If <paramref name="objectIds"/> is <c>null</c> then no change is made to the arguments.
+        /// </remarks>
+        /// <param name="builder">The <see cref="ArgumentBuilder"/> to add arguments to.</param>
+        /// <param name="objectIds">A sequence of SHA-1 object IDs to add to the builder, or <c>null</c>.</param>
+        /// <exception cref="ArgumentException"><paramref name="objectIds"/> contains an artificial commit.</exception>
+        public static void Add(this ArgumentBuilder builder, [CanBeNull, ItemCanBeNull] IEnumerable<ObjectId> objectIds)
+        {
+            if (objectIds == null)
+            {
+                return;
+            }
+
+            foreach (var objectId in objectIds)
+            {
+                builder.Add(objectId);
             }
         }
     }

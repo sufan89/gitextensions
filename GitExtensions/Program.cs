@@ -1,14 +1,17 @@
 ﻿using System;
 using System.Configuration;
+using System.Diagnostics;
 using System.IO;
 using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Utils;
+using GitExtUtils.GitUI;
 using GitUI;
 using GitUI.CommandsDialogs.SettingsDialog;
 using GitUI.CommandsDialogs.SettingsDialog.Pages;
 using JetBrains.Annotations;
 using Microsoft.VisualStudio.Threading;
+using ResourceManager;
 
 namespace GitExtensions
 {
@@ -23,6 +26,8 @@ namespace GitExtensions
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
+            HighDpiMouseCursors.Enable();
+
             try
             {
                 NBug.Settings.UIMode = NBug.Enums.UIMode.Full;
@@ -36,8 +41,11 @@ namespace GitExtensions
                 NBug.Settings.SleepBeforeSend = 30;
                 NBug.Settings.StoragePath = NBug.Enums.StoragePath.WindowsTemp;
 
-                AppDomain.CurrentDomain.UnhandledException += NBug.Handler.UnhandledException;
-                Application.ThreadException += NBug.Handler.ThreadException;
+                if (!Debugger.IsAttached)
+                {
+                    AppDomain.CurrentDomain.UnhandledException += NBug.Handler.UnhandledException;
+                    Application.ThreadException += NBug.Handler.ThreadException;
+                }
             }
             catch (TypeInitializationException tie)
             {
@@ -50,6 +58,9 @@ namespace GitExtensions
                 }
             }
 
+            // This is done here so these values can be used in the GitGui project but this project is the authority of the values.
+            UserEnvironmentInformation.Initialise(ThisAssembly.Git.Sha, ThisAssembly.Git.IsDirty);
+
             // NOTE we perform the rest of the application's startup in another method to defer
             // the JIT processing more types than required to configure NBug.
             // In this way, there's more chance we can handle startup exceptions correctly.
@@ -60,7 +71,7 @@ namespace GitExtensions
         {
             string[] args = Environment.GetCommandLineArgs();
 
-            // This form created for obtain UI synchronization context only
+            // This form created to obtain UI synchronization context only
             using (new Form())
             {
                 // Store the shared JoinableTaskContext
@@ -84,22 +95,34 @@ namespace GitExtensions
 
             try
             {
-                if (!(args.Length >= 2 && args[1] == "uninstall")
-                    && (AppSettings.CheckSettings
-                    || string.IsNullOrEmpty(AppSettings.GitCommandValue)
-                    || !File.Exists(AppSettings.GitCommandValue)))
+                // Ensure we can find the git command to execute,
+                // unless we are being instructed to uninstall,
+                // or AppSettings.CheckSettings is set to false.
+                if (!(args.Length >= 2 && args[1] == "uninstall"))
                 {
-                    GitUICommands uiCommands = new GitUICommands(string.Empty);
-                    var commonLogic = new CommonLogic(uiCommands.Module);
-                    var checkSettingsLogic = new CheckSettingsLogic(commonLogic);
-                    ISettingsPageHost fakePageHost = new SettingsPageHostMock(checkSettingsLogic);
-                    using (var checklistSettingsPage = SettingsPageBase.Create<ChecklistSettingsPage>(fakePageHost))
+                    if (!CheckSettingsLogic.SolveGitCommand())
                     {
-                        if (!checklistSettingsPage.CheckSettings())
+                        if (!LocateMissingGit())
                         {
-                            if (!checkSettingsLogic.AutoSolveAllSettings())
+                            Environment.Exit(-1);
+                            return;
+                        }
+                    }
+
+                    if (AppSettings.CheckSettings)
+                    {
+                        var uiCommands = new GitUICommands("");
+                        var commonLogic = new CommonLogic(uiCommands.Module);
+                        var checkSettingsLogic = new CheckSettingsLogic(commonLogic);
+                        var fakePageHost = new SettingsPageHostMock(checkSettingsLogic);
+                        using (var checklistSettingsPage = SettingsPageBase.Create<ChecklistSettingsPage>(fakePageHost))
+                        {
+                            if (!checklistSettingsPage.CheckSettings())
                             {
-                                uiCommands.StartSettingsDialog();
+                                if (!checkSettingsLogic.AutoSolveAllSettings())
+                                {
+                                    uiCommands.StartSettingsDialog();
+                                }
                             }
                         }
                     }
@@ -115,11 +138,11 @@ namespace GitExtensions
                 MouseWheelRedirector.Active = true;
             }
 
-            GitUICommands commands = new GitUICommands(GetWorkingDir(args));
+            var commands = new GitUICommands(GetWorkingDir(args));
 
             if (args.Length <= 1)
             {
-                commands.StartBrowseDialog(startWithDashboard: !AppSettings.StartWithRecentWorkingDir);
+                commands.StartBrowseDialog();
             }
             else
             {
@@ -246,6 +269,54 @@ namespace GitExtensions
                 }
 
                 Environment.Exit(1);
+            }
+        }
+
+        private static bool LocateMissingGit()
+        {
+            int dialogResult = PSTaskDialog.cTaskDialog.ShowCommandBox(Title: "Error",
+                                                                        MainInstruction: Strings.GitExecutableNotFound,
+                                                                        Content: null,
+                                                                        ExpandedInfo: null,
+                                                                        Footer: null,
+                                                                        VerificationText: null,
+                                                                        CommandButtons: $"{Strings.FindGitExecutable}|{Strings.InstallGitInstructions}",
+                                                                        ShowCancelButton: true,
+                                                                        MainIcon: PSTaskDialog.eSysIcons.Error,
+                                                                        FooterIcon: PSTaskDialog.eSysIcons.Warning);
+            switch (dialogResult)
+            {
+                case 0:
+                    {
+                        using (var dialog = new OpenFileDialog
+                        {
+                            Filter = @"git.exe|git.exe|git.cmd|git.cmd",
+                        })
+                        {
+                            if (dialog.ShowDialog(null) == DialogResult.OK)
+                            {
+                                AppSettings.GitCommandValue = dialog.FileName;
+                            }
+
+                            if (CheckSettingsLogic.SolveGitCommand())
+                            {
+                                return true;
+                            }
+                        }
+
+                        return false;
+                    }
+
+                case 1:
+                    {
+                        Process.Start(@"https://github.com/gitextensions/gitextensions/wiki/Application-Dependencies#git");
+                        return false;
+                    }
+
+                default:
+                    {
+                        return false;
+                    }
             }
         }
     }

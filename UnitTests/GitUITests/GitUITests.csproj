@@ -13,6 +13,8 @@
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <TestProjectType>UnitTest</TestProjectType>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -36,60 +38,93 @@
     <DocumentationFile>bin\Release\GitUITests.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="ICSharpCode.TextEditor">
-      <HintPath>..\..\Bin\ICSharpCode.TextEditor.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="ApprovalTests" Version="3.0.13" />
     <PackageReference Include="FluentAssertions" Version="5.2.0" />
     <PackageReference Include="LibGit2Sharp" Version="0.25.0" />
     <PackageReference Include="NSubstitute" Version="3.1.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="3.10.0" />
+    <PackageReference Include="System.IO.Abstractions">
+      <Version>2.0.0.144</Version>
+    </PackageReference>
+    <PackageReference Include="System.IO.Abstractions.TestingHelpers">
+      <Version>2.0.0.143</Version>
+    </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Avatars\AvatarCacheTestBase.cs" />
+    <Compile Include="Avatars\AvatarMemoryCacheTests.cs" />
+    <Compile Include="Avatars\AvatarPersistentCacheTests.cs" />
+    <Compile Include="Avatars\AvatarTestBase.cs" />
+    <Compile Include="Avatars\BackupAvatarProviderTests.cs" />
     <Compile Include="CancellationTokenSequenceTests.cs" />
+    <Compile Include="CommandsDialogs\CommitDialog\FormBrowseTests.LeftPanel.cs" />
+    <Compile Include="CommandsDialogs\CommitDialog\FormBrowseTests.cs" />
+    <Compile Include="CommandsDialogs\CommitDialog\FormPullTests.cs" />
     <Compile Include="CommandsDialogs\CommitDialog\FormInitTests.cs" />
     <Compile Include="CommandsDialogs\CommitDialog\FormCommitTests.cs" />
+    <Compile Include="CommandsDialogs\FormFileHistoryControllerTests.cs" />
     <Compile Include="CommandsDialogs\ReferenceRepository.cs" />
     <Compile Include="CommandsDialogs\RevisionDiffContextMenuControllerTests.cs" />
     <Compile Include="CommandsDialogs\RevisionFileTreeControllerTests.cs" />
     <Compile Include="CommandsDialogs\RevisionDiffControllerTests.cs" />
     <Compile Include="ControlThreadingExtensionsTests.cs" />
+    <Compile Include="Editor\FileViewerInternal.CurrentViewPositionCacheTests.cs" />
+    <Compile Include="Editor\FileViewerTextTests.cs" />
+    <Compile Include="Editor\RichTextBoxXhtmlSupportExtensionTests.cs" />
     <Compile Include="FindFilePredicateProviderTest.cs" />
+    <Compile Include="GitExtensionsFormTests.cs" />
     <Compile Include="Helpers\DiffKindRevisionTests.cs" />
+    <Compile Include="ControlUtilTests.cs" />
     <Compile Include="LinqExtensionsTests.cs" />
+    <Compile Include="Script\ScriptOptionsParserTests.cs" />
     <Compile Include="SpellChecker\WordAtCursorExtractorTests.cs" />
     <Compile Include="SplitterManagerTest.cs" />
+    <Compile Include="StringBuilderExtensionsTests.cs" />
     <Compile Include="ThreadHelperTests.cs" />
     <Compile Include="TranslationTest.cs" />
     <Compile Include="UITest.cs" />
-    <Compile Include="UserControls\AuthorEmailBasedRevisionHighlightingFixture.cs" />
+    <Compile Include="UserControls\AuthorRevisionHighlightingTests.cs" />
     <Compile Include="UserControls\ConsoleEmulatorOutputControlFixture.cs" />
-    <Compile Include="Editor\Diff\DiffLineNumAnalyzerFixture.cs" />
+    <Compile Include="Editor\Diff\DiffLineNumAnalyzerTests.cs" />
     <Compile Include="Editor\Diff\LinePrefixHelperFixture.cs" />
     <Compile Include="CommandsDialogs\BrowseDialog\FormUpdateFixture.cs" />
     <Compile Include="Hotkey\HotkeySettingsManagerFixture.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="UserControls\ToolStripClasses\CommitIconProviderTests.cs" />
+    <Compile Include="UserControls\RepoStateVisualiserTests.cs" />
+    <Compile Include="UserControls\RevisionGrid\CopyContextMenuItemTests.cs" />
+    <Compile Include="UserControls\RevisionGrid\GitRefListsForRevisionTests.cs" />
+    <Compile Include="UserControls\RevisionGrid\Graph\LaneNodeLocatorTests.cs" />
+    <Compile Include="UserControls\RevisionGrid\Graph\LaneInfoProviderTests.cs" />
+    <Compile Include="UserControls\RevisionGrid\Graph\RevisionGraphMultiThreadingTests.cs" />
+    <Compile Include="UserControls\RevisionGrid\Graph\RevisionGraphTests.cs" />
+    <Compile Include="UserControls\ToolStripPushButtonTests.cs" />
+    <Compile Include="UserControls\TreeViewExtensionsTests.cs" />
     <Compile Include="UserManual\SingleHtmlUserManualFixture.cs" />
     <Compile Include="UserManual\StandardHtmlUserManualFixture.cs" />
+    <Compile Include="WindowPositionManagerTests.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="app.config" />
     <None Include="Editor\Diff\Sample.diff">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="Editor\Diff\SampleCombined.diff">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <EmbeddedResource Include="Editor\MockData\MacLines.bin" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Externals\conemu-inside\ConEmuWinForms\ConEmuWinForms.csproj">
       <Project>{1DC7D403-484B-43B4-B017-1356397A32CB}</Project>
       <Name>ConEmuWinForms</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Externals\ICSharpCode.TextEditor\Project\ICSharpCode.TextEditor.csproj">
+      <Project>{2d18be89-d210-49eb-a9dd-2246fbb3df6d}</Project>
+      <Name>ICSharpCode.TextEditor</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\GitCommands\GitCommands.csproj">
       <Project>{BD6AA2A2-997D-4AFF-ACC7-B64F6E51D181}</Project>
@@ -115,6 +150,10 @@
       <Project>{7B1F2FA0-E17D-499B-AF86-D49DBEF8C548}</Project>
       <Name>CommonTestUtils</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Editor\MockData\UnixLines.bin" />
+    <EmbeddedResource Include="Editor\MockData\WindowsLines.bin" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

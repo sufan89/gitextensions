@@ -1,8 +1,8 @@
 ﻿using System;
+using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using GitCommands;
-using GitUI.Editor;
 
 namespace GitUI.CommandsDialogs.SettingsDialog.Pages
 {
@@ -11,13 +11,17 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
         public ColorsSettingsPage()
         {
             InitializeComponent();
-            Text = "Colors";
-            Translate();
+            InitializeComplete();
         }
 
         protected override void OnRuntimeLoad()
         {
             base.OnRuntimeLoad();
+
+            if (!IsSettingsLoaded)
+            {
+                SettingsToPage();
+            }
 
             // align 1st columns across all tables
             tlpnlRevisionGraph.AdjustWidthToSize(0, MulticolorBranches, lblColorLineRemoved);
@@ -39,10 +43,11 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             chkDrawAlternateBackColor.Checked = AppSettings.RevisionGraphDrawAlternateBackColor;
             DrawNonRelativesGray.Checked = AppSettings.RevisionGraphDrawNonRelativesGray;
             DrawNonRelativesTextGray.Checked = AppSettings.RevisionGraphDrawNonRelativesTextGray;
-            BranchBorders.Checked = AppSettings.BranchBorders;
-            StripedBanchChange.Checked = AppSettings.StripedBranchChange;
-            HighlightAuthoredRevisions.Checked = AppSettings.HighlightAuthoredRevisions;
+            chkHighlightAuthored.Checked = AppSettings.HighlightAuthoredRevisions;
 
+            _NO_TRANSLATE_ColorHighlightAuthoredLabel.BackColor = AppSettings.HighlightAuthoredRevisions ? AppSettings.AuthoredRevisionsHighlightColor : Color.LightYellow;
+            _NO_TRANSLATE_ColorHighlightAuthoredLabel.Text = AppSettings.AuthoredRevisionsHighlightColor.Name;
+            _NO_TRANSLATE_ColorHighlightAuthoredLabel.ForeColor = ColorHelper.GetForeColorForBackColor(_NO_TRANSLATE_ColorHighlightAuthoredLabel.BackColor);
             _NO_TRANSLATE_ColorGraphLabel.BackColor = AppSettings.GraphColor;
             _NO_TRANSLATE_ColorGraphLabel.Text = AppSettings.GraphColor.Name;
             _NO_TRANSLATE_ColorGraphLabel.ForeColor = ColorHelper.GetForeColorForBackColor(_NO_TRANSLATE_ColorGraphLabel.BackColor);
@@ -75,10 +80,6 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             _NO_TRANSLATE_ColorSectionLabel.BackColor = AppSettings.DiffSectionColor;
             _NO_TRANSLATE_ColorSectionLabel.Text = AppSettings.DiffSectionColor.Name;
             _NO_TRANSLATE_ColorSectionLabel.ForeColor = ColorHelper.GetForeColorForBackColor(_NO_TRANSLATE_ColorSectionLabel.BackColor);
-
-            _NO_TRANSLATE_ColorAuthoredRevisions.BackColor = AppSettings.AuthoredRevisionsColor;
-            _NO_TRANSLATE_ColorAuthoredRevisions.Text = AppSettings.AuthoredRevisionsColor.Name;
-            _NO_TRANSLATE_ColorAuthoredRevisions.ForeColor = ColorHelper.GetForeColorForBackColor(_NO_TRANSLATE_ColorAuthoredRevisions.BackColor);
         }
 
         protected override void PageToSettings()
@@ -87,16 +88,14 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             AppSettings.RevisionGraphDrawAlternateBackColor = chkDrawAlternateBackColor.Checked;
             AppSettings.RevisionGraphDrawNonRelativesGray = DrawNonRelativesGray.Checked;
             AppSettings.RevisionGraphDrawNonRelativesTextGray = DrawNonRelativesTextGray.Checked;
-            AppSettings.BranchBorders = BranchBorders.Checked;
-            AppSettings.StripedBranchChange = StripedBanchChange.Checked;
-            AppSettings.HighlightAuthoredRevisions = HighlightAuthoredRevisions.Checked;
+            AppSettings.HighlightAuthoredRevisions = chkHighlightAuthored.Checked;
+            AppSettings.AuthoredRevisionsHighlightColor = chkHighlightAuthored.Checked ? _NO_TRANSLATE_ColorHighlightAuthoredLabel.BackColor : Color.LightYellow;
 
             AppSettings.GraphColor = _NO_TRANSLATE_ColorGraphLabel.BackColor;
             AppSettings.TagColor = _NO_TRANSLATE_ColorTagLabel.BackColor;
             AppSettings.BranchColor = _NO_TRANSLATE_ColorBranchLabel.BackColor;
             AppSettings.RemoteBranchColor = _NO_TRANSLATE_ColorRemoteBranchLabel.BackColor;
             AppSettings.OtherTagColor = _NO_TRANSLATE_ColorOtherLabel.BackColor;
-            AppSettings.AuthoredRevisionsColor = _NO_TRANSLATE_ColorAuthoredRevisions.BackColor;
 
             AppSettings.DiffAddedColor = _NO_TRANSLATE_ColorAddedLineLabel.BackColor;
             AppSettings.DiffRemovedColor = _NO_TRANSLATE_ColorRemovedLine.BackColor;
@@ -110,31 +109,30 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             if (MulticolorBranches.Checked)
             {
                 _NO_TRANSLATE_ColorGraphLabel.Visible = false;
-                StripedBanchChange.Enabled = true;
             }
             else
             {
                 _NO_TRANSLATE_ColorGraphLabel.Visible = true;
-                StripedBanchChange.Enabled = false;
             }
         }
 
         private void ColorLabel_Click(object sender, EventArgs e)
         {
-            PickColor((Label)sender);
-        }
+            var label = (Label)sender;
 
-        private void PickColor(Control targetColorControl)
-        {
-            using (var colorDialog = new ColorDialog { Color = targetColorControl.BackColor })
+            using (var colorDialog = new ColorDialog { Color = label.BackColor })
             {
                 colorDialog.ShowDialog(this);
-                targetColorControl.BackColor = colorDialog.Color;
-                targetColorControl.Text = colorDialog.Color.Name;
+                label.BackColor = colorDialog.Color;
+                label.Text = colorDialog.Color.Name;
+                label.ForeColor = ColorHelper.GetForeColorForBackColor(label.BackColor);
             }
+        }
 
-            targetColorControl.ForeColor =
-                ColorHelper.GetForeColorForBackColor(targetColorControl.BackColor);
+        private void chkHighlightAuthored_CheckedChanged(object sender, EventArgs e)
+        {
+            lblColorHighlightAuthored.Enabled = chkHighlightAuthored.Checked;
+            _NO_TRANSLATE_ColorHighlightAuthoredLabel.Enabled = chkHighlightAuthored.Checked;
         }
     }
 }

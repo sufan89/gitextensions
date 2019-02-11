@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using GitCommands.Remote;
+using GitCommands.Remotes;
 
 namespace GitCommands.ExternalLinks
 {
@@ -64,7 +64,7 @@ namespace GitCommands.ExternalLinks
                 {
                     if (remote.Url.IsNotNullOrWhitespace())
                     {
-                        remoteUrls.Add(remote.Url.ToLower());
+                        remoteUrls.Add(remote.Url);
                     }
                 }
 
@@ -72,7 +72,7 @@ namespace GitCommands.ExternalLinks
                 {
                     if (remote.PushUrl.IsNotNullOrWhitespace())
                     {
-                        remoteUrls.Add(remote.PushUrl.ToLower());
+                        remoteUrls.Add(remote.PushUrl);
                     }
                 }
             }

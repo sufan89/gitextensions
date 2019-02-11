@@ -27,7 +27,9 @@ namespace GitUI.CommandsDialogs.SettingsDialog
         public SettingsPageHeader(SettingsPageWithHeader page)
         {
             InitializeComponent();
-            Translate();
+            InitializeComplete();
+
+            label1.Font = new System.Drawing.Font(label1.Font, System.Drawing.FontStyle.Bold);
 
             if (page != null)
             {

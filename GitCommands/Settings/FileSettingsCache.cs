@@ -173,10 +173,10 @@ namespace GitCommands.Settings
                     _lastFileRead = DateTime.UtcNow;
                     _fileWatcher.EnableRaisingEvents = _canEnableFileWatcher;
                 }
-                catch (IOException e)
+                catch (Exception e)
                 {
+                    // TODO: should we report it to the user somehow?
                     Debug.WriteLine(e.Message);
-                    throw;
                 }
             }
             else
@@ -206,7 +206,7 @@ namespace GitCommands.Settings
         // Used to eliminate multiple settings file open and close to save multiple values.  Settings will be saved SAVETIME milliseconds after the last setvalue is called
         private void OnSaveTimer(object source, System.Timers.ElapsedEventArgs e)
         {
-            System.Timers.Timer t = (System.Timers.Timer)source;
+            var t = (System.Timers.Timer)source;
             t.Stop();
             Save();
         }

@@ -3,6 +3,7 @@ using System.Linq;
 using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Git;
+using GitUIPluginInterfaces;
 using ResourceManager;
 
 namespace GitUI.CommandsDialogs.BrowseDialog
@@ -13,21 +14,22 @@ namespace GitUI.CommandsDialogs.BrowseDialog
         private readonly TranslationString _bisectStart =
             new TranslationString("Mark selected revisions as start bisect range?");
 
-        private readonly RevisionGrid _revisionGrid;
+        private readonly RevisionGridControl _revisionGrid;
 
+        [Obsolete("For VS designer and translation test only. Do not remove.")]
         private FormBisect()
-            : this((GitUICommands)null)
         {
+            InitializeComponent();
         }
 
         private FormBisect(GitUICommands commands)
             : base(commands)
         {
             InitializeComponent();
-            Translate();
+            InitializeComplete();
         }
 
-        public FormBisect(RevisionGrid revisionGrid)
+        public FormBisect(RevisionGridControl revisionGrid)
             : this(revisionGrid.UICommands)
         {
             _revisionGrid = revisionGrid;
@@ -55,23 +57,25 @@ namespace GitUI.CommandsDialogs.BrowseDialog
             {
                 if (MessageBox.Show(this, _bisectStart.Text, Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                 {
-                    BisectRange(revisions.First().Guid, revisions.Last().Guid);
+                    BisectRange(revisions.First().ObjectId, revisions.Last().ObjectId);
                     Close();
                 }
             }
-        }
 
-        private void BisectRange(string startRevision, string endRevision)
-        {
-            var command = GitCommandHelpers.ContinueBisectCmd(GitBisectOption.Good, startRevision);
-            var errorOccurred = !FormProcess.ShowDialog(this, command);
-            if (errorOccurred)
+            return;
+
+            void BisectRange(ObjectId startRevision, ObjectId endRevision)
             {
-                return;
-            }
+                var command = GitCommandHelpers.ContinueBisectCmd(GitBisectOption.Good, startRevision);
+                var errorOccurred = !FormProcess.ShowDialog(this, command);
+                if (errorOccurred)
+                {
+                    return;
+                }
 
-            command = GitCommandHelpers.ContinueBisectCmd(GitBisectOption.Bad, endRevision);
-            FormProcess.ShowDialog(this, command);
+                command = GitCommandHelpers.ContinueBisectCmd(GitBisectOption.Bad, endRevision);
+                FormProcess.ShowDialog(this, command);
+            }
         }
 
         private void Good_Click(object sender, EventArgs e)

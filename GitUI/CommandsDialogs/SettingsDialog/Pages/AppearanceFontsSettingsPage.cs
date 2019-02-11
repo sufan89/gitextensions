@@ -10,26 +10,29 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
         private Font _diffFont;
         private Font _applicationFont;
         private Font _commitFont;
+        private Font _monospaceFont;
 
         public AppearanceFontsSettingsPage()
         {
             InitializeComponent();
             Text = "Fonts";
-            Translate();
+            InitializeComplete();
         }
 
         protected override void SettingsToPage()
         {
             SetCurrentApplicationFont(AppSettings.Font);
-            SetCurrentDiffFont(AppSettings.DiffFont);
+            SetCurrentDiffFont(AppSettings.FixedWidthFont);
             SetCurrentCommitFont(AppSettings.CommitFont);
+            SetCurrentMonospaceFont(AppSettings.MonospaceFont);
         }
 
         protected override void PageToSettings()
         {
-            AppSettings.DiffFont = _diffFont;
+            AppSettings.FixedWidthFont = _diffFont;
             AppSettings.Font = _applicationFont;
             AppSettings.CommitFont = _commitFont;
+            AppSettings.MonospaceFont = _monospaceFont;
         }
 
         private void diffFontChangeButton_Click(object sender, EventArgs e)
@@ -65,6 +68,17 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             }
         }
 
+        private void monospaceFontChangeButton_Click(object sender, EventArgs e)
+        {
+            monospaceFontDialog.Font = _monospaceFont;
+            DialogResult result = monospaceFontDialog.ShowDialog(this);
+
+            if (result == DialogResult.OK || result == DialogResult.Yes)
+            {
+                SetCurrentMonospaceFont(monospaceFontDialog.Font);
+            }
+        }
+
         private void SetCurrentDiffFont(Font newFont)
         {
             _diffFont = newFont;
@@ -83,9 +97,16 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             SetFontButtonText(newFont, commitFontChangeButton);
         }
 
+        private void SetCurrentMonospaceFont(Font newFont)
+        {
+            _monospaceFont = newFont;
+            SetFontButtonText(newFont, monospaceFontChangeButton);
+        }
+
         private static void SetFontButtonText(Font font, Button button)
         {
             button.Text = string.Format("{0}, {1}", font.FontFamily.Name, (int)(font.Size + 0.5f));
+            button.Font = font;
         }
     }
 }

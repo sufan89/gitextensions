@@ -1,17 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using CommonTestUtils;
 using FluentAssertions;
 using GitCommands.Config;
-using GitCommands.Remote;
+using GitCommands.Remotes;
 using GitUIPluginInterfaces;
 using NSubstitute;
 using NUnit.Framework;
 
 namespace GitCommandsTests.Remote
 {
-    [SetCulture("")]
-    [SetUICulture("")]
+    [SetCulture("en-US")]
+    [SetUICulture("en-US")]
     [TestFixture]
     internal class GitRemoteManagerTests
     {
@@ -41,12 +42,12 @@ namespace GitCommandsTests.Remote
         [Test]
         public void LoadRemotes_should_not_populate_remotes_if_none()
         {
-            _module.GetRemotes().Returns(x => Enumerable.Empty<string>());
+            _module.GetRemoteNames().Returns(x => Enumerable.Empty<string>());
 
             var remotes = _controller.LoadRemotes(true);
 
             remotes.Count().Should().Be(0);
-            _module.Received(1).GetRemotes();
+            _module.Received(1).GetRemoteNames();
             _module.DidNotReceive().GetSetting(Arg.Any<string>());
             _module.DidNotReceive().GetSettings(Arg.Any<string>());
         }
@@ -54,12 +55,12 @@ namespace GitCommandsTests.Remote
         [Test]
         public void LoadRemotes_should_not_populate_remotes_if_those_are_null_or_whitespace()
         {
-            _module.GetRemotes().Returns(x => new[] { null, "", " ", "    ", "\t" });
+            _module.GetRemoteNames().Returns(x => new[] { null, "", " ", "    ", "\t" });
 
             var remotes = _controller.LoadRemotes(true);
 
             remotes.Count().Should().Be(0);
-            _module.Received(1).GetRemotes();
+            _module.Received(1).GetRemoteNames();
             _module.DidNotReceive().GetSetting(Arg.Any<string>());
             _module.DidNotReceive().GetSettings(Arg.Any<string>());
         }
@@ -70,7 +71,7 @@ namespace GitCommandsTests.Remote
         {
             const string remoteName1 = "name1";
             const string remoteName2 = "name2";
-            _module.GetRemotes().Returns(x => new[] { null, "", " ", "    ", remoteName1, "\t" });
+            _module.GetRemoteNames().Returns(x => new[] { null, "", " ", "    ", remoteName1, "\t" });
             var sections = new List<IConfigSection> { new ConfigSection($"{GitRemoteManager.DisabledSectionPrefix}{GitRemoteManager.SectionRemote}.{remoteName2}", true) };
             _configFile.GetConfigSections().Returns(x => sections);
 
@@ -78,7 +79,7 @@ namespace GitCommandsTests.Remote
 
             remotes.Count().Should().Be(loadDisabled ? 2 : 1);
 
-            _module.Received(1).GetRemotes();
+            _module.Received(1).GetRemoteNames();
             _module.Received(1).GetSetting(string.Format(SettingKeyString.RemoteUrl, remoteName1));
             _module.Received(1).GetSetting(string.Format(SettingKeyString.RemotePushUrl, remoteName1));
             _module.Received(1).GetSetting(string.Format(SettingKeyString.RemotePuttySshKey, remoteName1));
@@ -125,7 +126,7 @@ namespace GitCommandsTests.Remote
         {
             const string remoteName = "a";
             const string remoteUrl = "b";
-            const string output = "yes!";
+            const string output = "";
             _module.AddRemote(Arg.Any<string>(), Arg.Any<string>()).Returns(x => output);
 
             var result = _controller.SaveRemote(null, remoteName, remoteUrl, null, null);
@@ -142,7 +143,7 @@ namespace GitCommandsTests.Remote
             const string remoteUrl = "b";
             const string remotePushUrl = "c";
             const string remotePuttySshKey = "";
-            const string output = "yes!";
+            const string output = "";
             _module.AddRemote(Arg.Any<string>(), Arg.Any<string>()).Returns(x => output);
 
             var result = _controller.SaveRemote(null, remoteName, remoteUrl, remotePushUrl, remotePuttySshKey);
@@ -348,6 +349,131 @@ namespace GitCommandsTests.Remote
             gitRef.IsRemote.Returns(isRemote);
             gitRef.IsTag.Returns(isTag);
             return gitRef;
+        }
+
+        [Test]
+        public void GetDisabledRemotes_returns_disabled_remotes_only()
+        {
+            string enabledRemoteName = "enabledRemote";
+            string disabledRemoteName = "disabledRemote";
+
+            _module.GetRemoteNames().Returns(x => new[] { enabledRemoteName, });
+
+            var sections = new List<IConfigSection> { new ConfigSection($"{GitRemoteManager.DisabledSectionPrefix}{GitRemoteManager.SectionRemote}.{disabledRemoteName}", true) };
+            _configFile.GetConfigSections().Returns(x => sections);
+
+            var disabledRemotes = _controller.GetDisabledRemotes();
+            Assert.AreEqual(1, disabledRemotes.Count);
+            Assert.AreEqual(disabledRemoteName, disabledRemotes[0].Name);
+
+            var disabledRemoteNames = _controller.GetDisabledRemoteNames();
+            Assert.AreEqual(1, disabledRemoteNames.Count);
+            Assert.AreEqual(disabledRemoteName, disabledRemoteNames[0]);
+        }
+
+        [Test]
+        public void GetEnabledRemoteNames_returns_enabled_remotes_only()
+        {
+            string enabledRemoteName = "enabledRemote";
+            string disabledRemoteName = "disabledRemote";
+
+            _module.GetRemoteNames().Returns(x => new[] { enabledRemoteName, });
+
+            var sections = new List<IConfigSection> { new ConfigSection($"{GitRemoteManager.DisabledSectionPrefix}{GitRemoteManager.SectionRemote}.{disabledRemoteName}", true) };
+            _configFile.GetConfigSections().Returns(x => sections);
+
+            var enabledRemoteNames = _controller.GetEnabledRemoteNames();
+            Assert.AreEqual(1, enabledRemoteNames.Count);
+            Assert.AreEqual(enabledRemoteName, enabledRemoteNames[0]);
+        }
+
+        [Test]
+        public void GetEnabledRemotesNameWithoutBranches_returns_enabled_remotes_without_branches_only()
+        {
+            string enabledRemoteNameWithBranches = "enabledRemote1";
+            string enabledRemoteNameNoBranches = "enabledRemote2";
+            string disabledRemoteName = "disabledRemote";
+
+            _module.GetRemoteNames().Returns(x => new[] { enabledRemoteNameWithBranches, enabledRemoteNameNoBranches });
+
+            var refs = new[]
+            {
+                CreateSubstituteRef("02e10a13e06e7562f7c3c516abb2a0e1a0c0dd90", $"refs/remotes/{enabledRemoteNameWithBranches}/develop", $"{enabledRemoteNameWithBranches}"),
+            };
+
+            _module.GetRefs().ReturnsForAnyArgs(refs);
+
+            var sections = new List<IConfigSection> { new ConfigSection($"{GitRemoteManager.DisabledSectionPrefix}{GitRemoteManager.SectionRemote}.{disabledRemoteName}", true) };
+            _configFile.GetConfigSections().Returns(x => sections);
+
+            var enabledRemotesNoBranches = _controller.GetEnabledRemoteNamesWithoutBranches();
+            Assert.AreEqual(1, enabledRemotesNoBranches.Count);
+            Assert.AreEqual(enabledRemoteNameNoBranches, enabledRemotesNoBranches[0]);
+        }
+
+        [Test]
+        public void EnabledRemoteExists_returns_true_for_enabled_remotes_only()
+        {
+            string enabledRemoteName = "enabledRemote";
+            string disabledRemoteName = "disabledRemote";
+
+            _module.GetRemoteNames().Returns(x => new[] { enabledRemoteName, });
+
+            var sections = new List<IConfigSection> { new ConfigSection($"{GitRemoteManager.DisabledSectionPrefix}{GitRemoteManager.SectionRemote}.{disabledRemoteName}", true) };
+            _configFile.GetConfigSections().Returns(x => sections);
+
+            Assert.IsTrue(_controller.EnabledRemoteExists(enabledRemoteName));
+            Assert.IsFalse(_controller.EnabledRemoteExists(disabledRemoteName));
+        }
+
+        [Test]
+        public void DisabledRemoteExists_returns_true_for_disabled_remotes_only()
+        {
+            string enabledRemoteName = "enabledRemote";
+            string disabledRemoteName = "disabledRemote";
+
+            _module.GetRemoteNames().Returns(x => new[] { enabledRemoteName, });
+
+            var sections = new List<IConfigSection> { new ConfigSection($"{GitRemoteManager.DisabledSectionPrefix}{GitRemoteManager.SectionRemote}.{disabledRemoteName}", true) };
+            _configFile.GetConfigSections().Returns(x => sections);
+
+            Assert.IsTrue(_controller.DisabledRemoteExists(disabledRemoteName));
+            Assert.IsFalse(_controller.DisabledRemoteExists(enabledRemoteName));
+        }
+
+        public class IntegrationTests
+        {
+            [Test]
+            public void ToggleRemoteState_should_not_fail_if_activate_repeatedly()
+            {
+                using (var helper = new GitModuleTestHelper())
+                {
+                    var manager = new GitRemoteManager(() => helper.Module);
+
+                    const string remoteName = "active";
+                    helper.Module.AddRemote(remoteName, "http://localhost/remote/repo.git");
+                    manager.ToggleRemoteState(remoteName, true);
+
+                    helper.Module.AddRemote(remoteName, "http://localhost/remote/repo.git");
+                    manager.ToggleRemoteState(remoteName, false);
+                }
+            }
+
+            [Test]
+            public void ToggleRemoteState_should_not_fail_if_deactivate_repeatedly()
+            {
+                using (var helper = new GitModuleTestHelper())
+                {
+                    var manager = new GitRemoteManager(() => helper.Module);
+
+                    const string remoteName = "active";
+                    helper.Module.AddRemote(remoteName, "http://localhost/remote/repo.git");
+                    manager.ToggleRemoteState(remoteName, true);
+
+                    helper.Module.AddRemote(remoteName, "http://localhost/remote/repo.git");
+                    manager.ToggleRemoteState(remoteName, true);
+                }
+            }
         }
     }
 }

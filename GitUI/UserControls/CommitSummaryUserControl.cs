@@ -2,8 +2,8 @@
 using System.Drawing;
 using System.Linq;
 using GitCommands;
-using GitUI.Editor;
 using ResourceManager;
+using ResourceManager.CommitDataRenders;
 
 namespace GitUI.UserControls
 {
@@ -13,29 +13,33 @@ namespace GitUI.UserControls
     /// </summary>
     public partial class CommitSummaryUserControl : GitExtensionsControl
     {
+        private const int MaxBranchTagLength = 75;
         private readonly TranslationString _noRevision = new TranslationString("No revision");
         private readonly TranslationString _notAvailable = new TranslationString("n/a");
+        private readonly IDateFormatter _dateFormatter = new DateFormatter();
         private readonly string _tagsCaption;
         private readonly string _branchesCaption;
         private readonly Color _tagsBackColor = Color.LightSteelBlue;
         private readonly Color _branchesBackColor = Color.LightSalmon;
+        private GitRevision _revision;
+
+        private readonly int _messageY;
+        private readonly int _messageHeight;
 
         public CommitSummaryUserControl()
         {
             InitializeComponent();
-            Translate();
+            InitializeComplete();
             _tagsCaption = labelTagsCaption.Text;
             _branchesCaption = labelBranchesCaption.Text;
 
             _messageY = labelMessage.Location.Y;
             _messageHeight = labelMessage.Height;
             labelMessage.AutoSize = true;
+
+            labelMessage.Font = new Font(labelMessage.Font, FontStyle.Bold);
+            labelAuthor.Font = new Font(labelAuthor.Font, FontStyle.Bold);
         }
-
-        private GitRevision _revision;
-
-        private readonly int _messageY;
-        private readonly int _messageHeight;
 
         public GitRevision Revision
         {
@@ -48,41 +52,44 @@ namespace GitUI.UserControls
             {
                 _revision = value;
 
-                labelAuthorCaption.Text = Strings.GetAuthorText() + ":";
+                labelAuthorCaption.Text = Strings.Author + ":";
+                labelDateCaption.Text = Strings.CommitDate + ":";
                 labelTagsCaption.Text = _tagsCaption;
                 labelBranchesCaption.Text = _branchesCaption;
 
                 if (Revision != null)
                 {
-                    groupBox1.Text = GitRevision.ToShortSha(Revision.Guid);
-                    labelAuthor.Text = string.Format("{0}", Revision.Author);
-                    labelDate.Text = string.Format(Strings.GetCommitDateText() + ": {0}", Revision.CommitDate);
-                    labelMessage.Text = string.Format("{0}", Revision.Subject);
+                    groupBox1.Text = Revision.ObjectId.ToShortString();
+                    labelAuthor.Text = Revision.Author;
+                    labelDate.Text = _dateFormatter.FormatDateAsRelativeLocal(Revision.CommitDate);
+                    labelMessage.Text = Revision.Subject;
 
                     var tagList = Revision.Refs.Where(r => r.IsTag).ToList();
-                    string tagListStr = string.Join(", ", tagList.Select(h => h.LocalName).ToArray());
-                    labelTags.Text = string.Format("{0}", tagListStr.IsNullOrEmpty() ? _notAvailable.Text : tagListStr);
                     if (tagList.Any())
                     {
                         labelTags.BackColor = _tagsBackColor;
                         labelTags.ForeColor = ColorHelper.GetForeColorForBackColor(_tagsBackColor);
+                        labelTags.Font = new Font(labelTags.Font, FontStyle.Bold);
+                        string tagListStr = string.Join(", ", tagList.Select(h => h.LocalName)).ShortenTo(MaxBranchTagLength);
+                        labelTags.Text = tagListStr;
                     }
                     else
                     {
-                        labelTags.Font = new Font(labelTags.Font, FontStyle.Regular);
+                        labelTags.Text = _notAvailable.Text;
                     }
 
                     var branchesList = Revision.Refs.Where(r => r.IsHead).ToList();
-                    string branchesListStr = string.Join(", ", branchesList.Select(h => h.LocalName).ToArray());
-                    labelBranches.Text = string.Format("{0}", branchesListStr.IsNullOrEmpty() ? _notAvailable.Text : branchesListStr);
                     if (branchesList.Any())
                     {
                         labelBranches.BackColor = _branchesBackColor;
                         labelBranches.ForeColor = ColorHelper.GetForeColorForBackColor(_branchesBackColor);
+                        labelBranches.Font = new Font(labelBranches.Font, FontStyle.Bold);
+                        string branchesListStr = string.Join(", ", branchesList.Select(h => h.LocalName)).ShortenTo(MaxBranchTagLength);
+                        labelBranches.Text = branchesListStr;
                     }
                     else
                     {
-                        labelBranches.Font = new Font(labelBranches.Font, FontStyle.Regular);
+                        labelBranches.Text = _notAvailable.Text;
                     }
                 }
                 else

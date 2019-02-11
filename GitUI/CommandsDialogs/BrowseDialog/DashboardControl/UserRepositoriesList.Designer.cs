@@ -54,9 +54,14 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
             this.tsmiCategories = new System.Windows.Forms.ToolStripMenuItem();
             this.tsmiCategoryNone = new System.Windows.Forms.ToolStripMenuItem();
             this.tsmiCategoryAdd = new System.Windows.Forms.ToolStripMenuItem();
-            this.contextMenuStrip = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.contextMenuStripRepository = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.contextMenuStripCategory = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.tsmiRemoveFromList = new System.Windows.Forms.ToolStripMenuItem();
+            this.tsmiRemoveMissingReposFromList = new System.Windows.Forms.ToolStripMenuItem();
             this.tsmiOpenFolder = new System.Windows.Forms.ToolStripMenuItem();
+            this.tsmiCategoryRename = new System.Windows.Forms.ToolStripMenuItem();
+            this.tsmiCategoryDelete = new System.Windows.Forms.ToolStripMenuItem();
+            this.tsmiCategoryClear = new System.Windows.Forms.ToolStripMenuItem();
             this.listView1 = new ExListView();
             this.clmhdrPath = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.clmhdrBranch = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
@@ -68,7 +73,8 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
             this.pnlHeader.SuspendLayout();
             this.pnlBody.SuspendLayout();
             this.tableLayoutPanel1.SuspendLayout();
-            this.contextMenuStrip.SuspendLayout();
+            this.contextMenuStripRepository.SuspendLayout();
+            this.contextMenuStripCategory.SuspendLayout();
             this.menuStripRecentMenu.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -154,24 +160,34 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
             // 
             // tsmiCategoryAdd
             // 
-            this.tsmiCategoryAdd.Image = global::GitUI.Properties.Resources.bullet_add;
+            this.tsmiCategoryAdd.Image = global::GitUI.Properties.Images.BulletAdd;
             this.tsmiCategoryAdd.Name = "tsmiCategoryAdd";
             this.tsmiCategoryAdd.Size = new System.Drawing.Size(130, 22);
             this.tsmiCategoryAdd.Text = "Add new...";
             this.tsmiCategoryAdd.Click += new System.EventHandler(this.tsmiCategoryAdd_Click);
             // 
-            // contextMenuStrip
+            // contextMenuStripRepository
             // 
-            this.contextMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.tsmiRemoveFromList,
+            this.contextMenuStripRepository.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.tsmiOpenFolder,
             this.toolStripMenuItem1,
             this.tsmiCategories,
             this.toolStripMenuItem2,
-            this.tsmiOpenFolder});
-            this.contextMenuStrip.Name = "contextMenuStrip";
-            this.contextMenuStrip.Size = new System.Drawing.Size(225, 126);
-            this.contextMenuStrip.Closed += new System.Windows.Forms.ToolStripDropDownClosedEventHandler(this.contextMenuStrip_Closed);
-            this.contextMenuStrip.Opening += new System.ComponentModel.CancelEventHandler(this.contextMenuStrip_Opening);
+            this.tsmiRemoveFromList,
+            this.tsmiRemoveMissingReposFromList});
+            this.contextMenuStripRepository.Name = "contextMenuStripRepository";
+            this.contextMenuStripRepository.Size = new System.Drawing.Size(225, 126);
+            this.contextMenuStripRepository.Closed += new System.Windows.Forms.ToolStripDropDownClosedEventHandler(this.contextMenuStrip_Closed);
+            this.contextMenuStripRepository.Opening += new System.ComponentModel.CancelEventHandler(this.contextMenuStrip_Opening);
+            // 
+            // contextMenuStripCategory
+            // 
+            this.contextMenuStripCategory.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+                this.tsmiCategoryRename,
+                this.tsmiCategoryDelete,
+                this.tsmiCategoryClear});
+            this.contextMenuStripCategory.Name = "contextMenuStripCategory";
+            this.contextMenuStripRepository.Size = new System.Drawing.Size(225, 66);
             // 
             // tsmiRemoveFromList
             // 
@@ -180,13 +196,44 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
             this.tsmiRemoveFromList.Text = "Remove project from the list";
             this.tsmiRemoveFromList.Click += new System.EventHandler(this.tsmiRemoveFromList_Click);
             // 
+            // tsmiRemoveMissingReposFromList
+            // 
+            this.tsmiRemoveMissingReposFromList.Name = "tsmiRemoveMissingReposFromList";
+            this.tsmiRemoveMissingReposFromList.Size = new System.Drawing.Size(224, 22);
+            this.tsmiRemoveMissingReposFromList.Text = "Remove missing projects from the list";
+            this.tsmiRemoveMissingReposFromList.Click += new System.EventHandler(this.tsmiRemoveMissingReposFromList_Click);
+            // 
             // tsmiOpenFolder
             // 
-            this.tsmiOpenFolder.Image = global::GitUI.Properties.Resources.IconBrowseFileExplorer;
+            this.tsmiOpenFolder.Image = global::GitUI.Properties.Images.BrowseFileExplorer;
             this.tsmiOpenFolder.Name = "tsmiOpenFolder";
             this.tsmiOpenFolder.Size = new System.Drawing.Size(224, 22);
-            this.tsmiOpenFolder.Text = "Open containing folder";
+            this.tsmiOpenFolder.Text = "Show in folder";
             this.tsmiOpenFolder.Click += new System.EventHandler(this.tsmiOpenFolder_Click);
+            // 
+            // tsmiCategoryRename
+            // 
+            this.tsmiCategoryRename.Image = global::GitUI.Properties.Images.FileStatusModified;
+            this.tsmiCategoryRename.Name = "tsmiCategoryRename";
+            this.tsmiCategoryRename.Size = new System.Drawing.Size(224, 22);
+            this.tsmiCategoryRename.Text = "Rename category";
+            this.tsmiCategoryRename.Click += new System.EventHandler(this.tsmiCategoryRename_Click);
+            // 
+            // tsmiCategoryClear
+            // 
+            this.tsmiCategoryClear.Image = global::GitUI.Properties.Images.CleanupRepo;
+            this.tsmiCategoryClear.Name = "tsmiCategoryClear";
+            this.tsmiCategoryClear.Size = new System.Drawing.Size(224, 22);
+            this.tsmiCategoryClear.Text = "Clear all recent repositories";
+            this.tsmiCategoryClear.Click += new System.EventHandler(this.tsmiCategoryClear_Click);
+            // 
+            // tsmiCategoryDelete
+            // 
+            this.tsmiCategoryDelete.Image = global::GitUI.Properties.Images.StarRemove;
+            this.tsmiCategoryDelete.Name = "tsmiCategoryDelete";
+            this.tsmiCategoryDelete.Size = new System.Drawing.Size(224, 22);
+            this.tsmiCategoryDelete.Text = "Delete category";
+            this.tsmiCategoryDelete.Click += new System.EventHandler(this.tsmiCategoryDelete_Click);
             // 
             // listView1
             // 
@@ -196,7 +243,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
             this.clmhdrPath,
             this.clmhdrBranch,
             this.clmhdrCategory});
-            this.listView1.ContextMenuStrip = this.contextMenuStrip;
+            this.listView1.ContextMenuStrip = this.contextMenuStripRepository;
             this.listView1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.listView1.FullRowSelect = true;
             listViewGroup1.Header = "Most Recent";
@@ -228,6 +275,8 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
             this.listView1.DrawItem += new System.Windows.Forms.DrawListViewItemEventHandler(this.listView1_DrawItem);
             this.listView1.MouseClick += new System.Windows.Forms.MouseEventHandler(this.listView1_MouseClick);
             this.listView1.MouseMove += new System.Windows.Forms.MouseEventHandler(this.listView1_MouseMove);
+            this.listView1.MouseLeave += new System.EventHandler(this.listView1_MouseLeave);
+            this.listView1.GroupMouseUp += new System.EventHandler<ListViewGroupMouseEventArgs>(this.listView1_GroupMouseUp);
             // 
             // clmhdrPath
             // 
@@ -255,7 +304,6 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
             this.menuStripRecentMenu.Name = "menuStripRecentMenu";
             this.menuStripRecentMenu.Size = new System.Drawing.Size(451, 24);
             this.menuStripRecentMenu.TabIndex = 3;
-            this.menuStripRecentMenu.Text = "menuStripRecentMenu";
             this.menuStripRecentMenu.Visible = false;
             // 
             // mnuTop
@@ -264,11 +312,10 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
             this.mnuConfigure});
             this.mnuTop.Name = "mnuTop";
             this.mnuTop.Size = new System.Drawing.Size(71, 20);
-            this.mnuTop.Text = "MenuTop";
             // 
             // mnuConfigure
             // 
-            this.mnuConfigure.Image = global::GitUI.Properties.Resources.Settings;
+            this.mnuConfigure.Image = global::GitUI.Properties.Images.Settings;
             this.mnuConfigure.Name = "mnuConfigure";
             this.mnuConfigure.Size = new System.Drawing.Size(218, 22);
             this.mnuConfigure.Text = "&Recent repositories settings";
@@ -291,7 +338,8 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
             this.pnlBody.PerformLayout();
             this.tableLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel1.PerformLayout();
-            this.contextMenuStrip.ResumeLayout(false);
+            this.contextMenuStripRepository.ResumeLayout(false);
+            this.contextMenuStripCategory.ResumeLayout(false);
             this.menuStripRecentMenu.ResumeLayout(false);
             this.menuStripRecentMenu.PerformLayout();
             this.ResumeLayout(false);
@@ -304,14 +352,19 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
         private System.Windows.Forms.Panel pnlHeader;
         private System.Windows.Forms.Panel pnlBody;
         private System.Windows.Forms.Label lblRecentRepositories;
-        private System.Windows.Forms.ContextMenuStrip contextMenuStrip;
+        private System.Windows.Forms.ContextMenuStrip contextMenuStripRepository;
+        private System.Windows.Forms.ContextMenuStrip contextMenuStripCategory;
         private System.Windows.Forms.ToolStripMenuItem tsmiRemoveFromList;
         private System.Windows.Forms.ToolStripMenuItem tsmiOpenFolder;
         private System.Windows.Forms.ToolStripMenuItem tsmiCategoryAdd;
         private System.Windows.Forms.ToolStripMenuItem tsmiCategories;
         private System.Windows.Forms.ToolStripMenuItem tsmiCategoryNone;
+        private System.Windows.Forms.ToolStripMenuItem tsmiRemoveMissingReposFromList;
         private System.Windows.Forms.ToolStripSeparator toolStripMenuItem1;
         private System.Windows.Forms.ToolStripSeparator toolStripMenuItem2;
+        private System.Windows.Forms.ToolStripMenuItem tsmiCategoryRename;
+        private System.Windows.Forms.ToolStripMenuItem tsmiCategoryDelete;
+        private System.Windows.Forms.ToolStripMenuItem tsmiCategoryClear;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
         private ExListView listView1;
         private System.Windows.Forms.ColumnHeader clmhdrPath;

@@ -1,12 +1,11 @@
 ﻿using System;
-using System.Collections;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using GitCommands;
+using GitCommands.Git;
 using GitExtUtils.GitUI;
-using GitUI.Editor;
 using GitUI.Properties;
 using ResourceManager;
 
@@ -31,7 +30,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
         public Dashboard()
         {
             InitializeComponent();
-            Translate();
+            InitializeComplete();
 
             SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
             Visible = false;
@@ -49,8 +48,6 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
             // apply scaling
             pnlLogo.Padding = DpiUtil.Scale(pnlLogo.Padding);
             userRepositoriesList.HeaderHeight = pnlLogo.Height;
-
-            this.AdjustForDpiScaling();
         }
 
         // need this to stop flickering of the background images, nothing else works
@@ -79,7 +76,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
                 flpnlStart.BackColor = _selectedTheme.PrimaryLight;
                 flpnlContribute.BackColor = _selectedTheme.PrimaryVeryLight;
                 lblContribute.ForeColor = _selectedTheme.SecondaryHeadingText;
-                userRepositoriesList.BranchNameColor = AppSettings.BranchColor; // _selectedTheme.SecondaryText;
+                userRepositoriesList.BranchNameColor = _selectedTheme.SecondaryText;
                 userRepositoriesList.FavouriteColor = _selectedTheme.AccentedText;
                 userRepositoriesList.ForeColor = _selectedTheme.PrimaryText;
                 userRepositoriesList.HeaderColor = _selectedTheme.SecondaryHeadingText;
@@ -106,10 +103,10 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
                             panel.Controls.Add(lblContribute);
                             lblContribute.Font = new Font(AppSettings.Font.FontFamily, AppSettings.Font.SizeInPoints + 5.5f);
 
-                            CreateLink(panel, _develop.Text, Resources.develop.ToBitmap(), GitHubItem_Click);
-                            CreateLink(panel, _donate.Text, Resources.dollar.ToBitmap(), DonateItem_Click);
-                            CreateLink(panel, _translate.Text, Resources.EditItem, TranslateItem_Click);
-                            var lastControl = CreateLink(panel, _issues.Text, Resources.bug, IssuesItem_Click);
+                            CreateLink(panel, _develop.Text, Images.Develop, GitHubItem_Click);
+                            CreateLink(panel, _donate.Text, Images.DollarSign, DonateItem_Click);
+                            CreateLink(panel, _translate.Text, Images.Translate, TranslateItem_Click);
+                            var lastControl = CreateLink(panel, _issues.Text, Images.Bug, IssuesItem_Click);
                             return lastControl;
                         },
                         (panel, lastControl) =>
@@ -122,13 +119,13 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
                     AddLinks(flpnlStart,
                         panel =>
                         {
-                            CreateLink(panel, _createRepository.Text, Resources.IconRepoCreate, createItem_Click);
-                            CreateLink(panel, _openRepository.Text, Resources.IconRepoOpen, openItem_Click);
-                            var lastControl = CreateLink(panel, _cloneRepository.Text, Resources.IconCloneRepoGit, cloneItem_Click);
+                            CreateLink(panel, _createRepository.Text, Images.RepoCreate, createItem_Click);
+                            CreateLink(panel, _openRepository.Text, Images.RepoOpen, openItem_Click);
+                            var lastControl = CreateLink(panel, _cloneRepository.Text, Images.CloneRepoGit, cloneItem_Click);
 
                             foreach (var gitHoster in PluginRegistry.GitHosters)
                             {
-                                lastControl = CreateLink(panel, string.Format(_cloneFork.Text, gitHoster.Description), Resources.IconCloneRepoGithub,
+                                lastControl = CreateLink(panel, string.Format(_cloneFork.Text, gitHoster.Description), Images.CloneRepoGitHub,
                                     (repoSender, eventArgs) => UICommands.StartCloneForkFromHoster(this, gitHoster, GitModuleChanged));
                             }
 
@@ -199,25 +196,6 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
             handler?.Invoke(this, e);
         }
 
-        private static T FindControl<T>(IEnumerable controls, Func<T, bool> predicate) where T : Control
-        {
-            foreach (Control control in controls)
-            {
-                if (control is T result && predicate(result))
-                {
-                    return result;
-                }
-
-                result = FindControl(control.Controls, predicate);
-                if (result != null)
-                {
-                    return result;
-                }
-            }
-
-            return null;
-        }
-
         private void dashboard_ParentChanged(object sender, EventArgs e)
         {
             if (Parent == null)
@@ -233,10 +211,9 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
             showCurrentBranchMenuItem.Click += showCurrentBranchMenuItem_Click;
             showCurrentBranchMenuItem.Checked = AppSettings.DashboardShowCurrentBranch;
 
-            var form = Application.OpenForms.Cast<Form>().FirstOrDefault(x => x.Name == nameof(FormBrowse));
-            if (form != null)
+            if (Parent.FindForm() is FormBrowse form)
             {
-                var menuStrip = FindControl<MenuStrip>(form.Controls, p => p.Name == "menuStrip1");
+                var menuStrip = form.FindDescendantOfType<MenuStrip>(p => p.Name == "menuStrip1");
                 var dashboardMenu = (ToolStripMenuItem)menuStrip.Items.Cast<ToolStripItem>().SingleOrDefault(p => p.Name == "dashboardToolStripMenuItem");
                 dashboardMenu?.DropDownItems.Add(showCurrentBranchMenuItem);
             }
@@ -254,17 +231,18 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
 
         private static void TranslateItem_Click(object sender, EventArgs e)
         {
-            Process.Start("https://www.transifex.com/git-extensions/git-extensions/translate/");
+            Process.Start("https://github.com/gitextensions/gitextensions/wiki/Translations");
         }
 
         private static void GitHubItem_Click(object sender, EventArgs e)
         {
-            Process.Start(@"http://github.com/gitextensions/gitextensions");
+            Process.Start(@"https://github.com/gitextensions/gitextensions");
         }
 
         private static void IssuesItem_Click(object sender, EventArgs e)
         {
-            Process.Start(@"http://github.com/gitextensions/gitextensions/issues");
+            UserEnvironmentInformation.CopyInformation();
+            Process.Start(@"https://github.com/gitextensions/gitextensions/issues");
         }
 
         private void openItem_Click(object sender, EventArgs e)

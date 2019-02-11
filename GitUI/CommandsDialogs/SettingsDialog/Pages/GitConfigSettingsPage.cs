@@ -20,7 +20,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
         {
             InitializeComponent();
             Text = "Config";
-            Translate();
+            InitializeComplete();
         }
 
         protected override void Init(ISettingsPageHost pageHost)
@@ -58,21 +58,23 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
 
         protected override void SettingsToPage()
         {
-            CommonLogic.EncodingToCombo(CurrentSettings.FilesEncoding, Global_FilesEncoding);
+            var mergeTool = CurrentSettings.GetValue("merge.tool");
+            var diffTool = CheckSettingsLogic.GetDiffToolFromConfig(CurrentSettings);
+
+            Global_FilesEncoding.Text = CurrentSettings.FilesEncoding?.EncodingName ?? "";
 
             GlobalUserName.Text = CurrentSettings.GetValue(SettingKeyString.UserName);
             GlobalUserEmail.Text = CurrentSettings.GetValue(SettingKeyString.UserEmail);
             GlobalEditor.Text = CurrentSettings.GetValue("core.editor");
-            _NO_TRANSLATE_GlobalMergeTool.Text = CurrentSettings.GetValue("merge.tool");
             CommitTemplatePath.Text = CurrentSettings.GetValue("commit.template");
 
-            MergetoolPath.Text = CurrentSettings.GetValue(string.Format("mergetool.{0}.path", _NO_TRANSLATE_GlobalMergeTool.Text));
-            MergeToolCmd.Text = CurrentSettings.GetValue(string.Format("mergetool.{0}.cmd", _NO_TRANSLATE_GlobalMergeTool.Text));
+            _NO_TRANSLATE_GlobalMergeTool.Text = mergeTool;
+            MergetoolPath.Text = CurrentSettings.GetValue($"mergetool.{mergeTool}.path");
+            MergeToolCmd.Text = CurrentSettings.GetValue($"mergetool.{mergeTool}.cmd");
 
-            _NO_TRANSLATE_GlobalDiffTool.Text = CheckSettingsLogic.GetDiffToolFromConfig(CurrentSettings);
-
-            DifftoolPath.Text = CurrentSettings.GetValue(string.Format("difftool.{0}.path", _NO_TRANSLATE_GlobalDiffTool.Text));
-            DifftoolCmd.Text = CurrentSettings.GetValue(string.Format("difftool.{0}.cmd", _NO_TRANSLATE_GlobalDiffTool.Text));
+            _NO_TRANSLATE_GlobalDiffTool.Text = diffTool;
+            DifftoolPath.Text = CurrentSettings.GetValue($"difftool.{diffTool}.path");
+            DifftoolCmd.Text = CurrentSettings.GetValue($"difftool.{diffTool}.cmd");
 
             GlobalKeepMergeBackup.SetNullableChecked(CurrentSettings.mergetool.keepBackup.Value);
 
@@ -100,15 +102,15 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             CurrentSettings.SetValue("commit.template", CommitTemplatePath.Text);
             CurrentSettings.SetPathValue("core.editor", GlobalEditor.Text);
 
-            CheckSettingsLogic.SetDiffToolToConfig(CurrentSettings, _NO_TRANSLATE_GlobalDiffTool.Text);
+            var diffTool = _NO_TRANSLATE_GlobalDiffTool.Text;
+            CheckSettingsLogic.SetDiffToolToConfig(CurrentSettings, diffTool);
+            CurrentSettings.SetPathValue($"difftool.{diffTool}.path", DifftoolPath.Text);
+            CurrentSettings.SetPathValue($"difftool.{diffTool}.cmd", DifftoolCmd.Text);
 
-            CurrentSettings.SetPathValue(string.Format("difftool.{0}.path", _NO_TRANSLATE_GlobalDiffTool.Text), DifftoolPath.Text);
-            CurrentSettings.SetPathValue(string.Format("difftool.{0}.cmd", _NO_TRANSLATE_GlobalDiffTool.Text), DifftoolCmd.Text);
-
-            CurrentSettings.SetValue("merge.tool", _NO_TRANSLATE_GlobalMergeTool.Text);
-
-            CurrentSettings.SetPathValue(string.Format("mergetool.{0}.path", _NO_TRANSLATE_GlobalMergeTool.Text), MergetoolPath.Text);
-            CurrentSettings.SetPathValue(string.Format("mergetool.{0}.cmd", _NO_TRANSLATE_GlobalMergeTool.Text), MergeToolCmd.Text);
+            var mergeTool = _NO_TRANSLATE_GlobalMergeTool.Text;
+            CurrentSettings.SetValue("merge.tool", mergeTool);
+            CurrentSettings.SetPathValue($"mergetool.{mergeTool}.path", MergetoolPath.Text);
+            CurrentSettings.SetPathValue($"mergetool.{mergeTool}.cmd", MergeToolCmd.Text);
 
             CurrentSettings.mergetool.keepBackup.Value = GlobalKeepMergeBackup.GetNullableChecked();
 
@@ -140,10 +142,11 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
                 return;
             }
 
-            MergetoolPath.Text = CurrentSettings.GetValue(string.Format("mergetool.{0}.path", _NO_TRANSLATE_GlobalMergeTool.Text.Trim()));
-            MergeToolCmd.Text = CurrentSettings.GetValue(string.Format("mergetool.{0}.cmd", _NO_TRANSLATE_GlobalMergeTool.Text.Trim()));
+            var mergeTool = _NO_TRANSLATE_GlobalMergeTool.Text.Trim();
+            MergetoolPath.Text = CurrentSettings.GetValue($"mergetool.{mergeTool}.path");
+            MergeToolCmd.Text = CurrentSettings.GetValue($"mergetool.{mergeTool}.cmd");
 
-            var isKdiff3 = _NO_TRANSLATE_GlobalMergeTool.Text.Equals("kdiff3", StringComparison.CurrentCultureIgnoreCase);
+            var isKdiff3 = mergeTool.Equals("kdiff3", StringComparison.CurrentCultureIgnoreCase);
 
             MergeToolCmd.Enabled = !isKdiff3 || !string.IsNullOrEmpty(MergeToolCmd.Text);
 
@@ -157,7 +160,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
                 return;
             }
 
-            CurrentSettings.SetPathValue(string.Format("mergetool.{0}.path", _NO_TRANSLATE_GlobalMergeTool.Text.Trim()), MergetoolPath.Text.Trim());
+            CurrentSettings.SetPathValue(string.Format("mergetool.{0}.path", _NO_TRANSLATE_GlobalMergeTool.Text.Trim()), MergetoolPath.Text?.Trim() ?? "");
             string exeName;
             string exeFile;
             if (!string.IsNullOrEmpty(MergetoolPath.Text))
@@ -215,7 +218,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
                 return;
             }
 
-            CurrentSettings.SetPathValue(string.Format("difftool.{0}.path", _NO_TRANSLATE_GlobalDiffTool.Text.Trim()), DifftoolPath.Text.Trim());
+            CurrentSettings.SetPathValue(string.Format("difftool.{0}.path", _NO_TRANSLATE_GlobalDiffTool.Text.Trim()), DifftoolPath.Text?.Trim() ?? "");
             string exeName;
             string exeFile;
             if (!string.IsNullOrEmpty(DifftoolPath.Text))
@@ -269,8 +272,8 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             }
 
             string diffTool = _NO_TRANSLATE_GlobalDiffTool.Text.Trim();
-            DifftoolPath.Text = CurrentSettings.GetValue(string.Format("difftool.{0}.path", diffTool));
-            DifftoolCmd.Text = CurrentSettings.GetValue(string.Format("difftool.{0}.cmd", diffTool));
+            DifftoolPath.Text = CurrentSettings.GetValue($"difftool.{diffTool}.path");
+            DifftoolCmd.Text = CurrentSettings.GetValue($"difftool.{diffTool}.cmd");
 
             if (diffTool.Equals("kdiff3", StringComparison.CurrentCultureIgnoreCase))
             {

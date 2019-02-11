@@ -1,31 +1,26 @@
 ﻿using System;
+using GitUIPluginInterfaces;
+using JetBrains.Annotations;
 
 namespace GitUI.HelperDialogs
 {
     public sealed partial class FormCommitDiff : GitModuleForm
     {
-        private FormCommitDiff(GitUICommands commands)
+        [Obsolete("For VS designer and translation test only. Do not remove.")]
+        private FormCommitDiff()
+        {
+            InitializeComponent();
+        }
+
+        public FormCommitDiff([NotNull] GitUICommands commands, [CanBeNull] ObjectId objectId)
             : base(commands)
         {
             InitializeComponent();
-            Translate();
-        }
+            InitializeComplete();
 
-        private FormCommitDiff()
-            : this(null)
-        {
-        }
+            CommitDiff.TextChanged += (s, e) => Text = CommitDiff.Text;
 
-        public FormCommitDiff(GitUICommands commands, string revisionGuid)
-            : this(commands)
-        {
-            CommitDiff.TextChanged += CommitDiff_TextChanged;
-            CommitDiff.SetRevision(revisionGuid, null);
-        }
-
-        private void CommitDiff_TextChanged(object sender, EventArgs e)
-        {
-            Text = CommitDiff.Text;
+            CommitDiff.SetRevision(objectId, fileToSelect: null);
         }
     }
 }

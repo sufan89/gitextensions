@@ -51,6 +51,28 @@ namespace GitUI.BranchTreePanel
             mnubtnBranchDelete.Visible = isNotActiveBranch;
         }
 
+        private void ContextMenuRemoteRepoSpecific(ContextMenuStrip contextMenu)
+        {
+            if (contextMenu != menuRemoteRepoNode)
+            {
+                return;
+            }
+
+            var node = (contextMenu.SourceControl as TreeView)?.SelectedNode?.Tag as RemoteRepoNode;
+            if (node == null)
+            {
+                return;
+            }
+
+            // Actions on enabled remotes
+            mnubtnFetchAllBranchesFromARemote.Visible = node.Enabled;
+            mnubtnDisableRemote.Visible = node.Enabled;
+
+            // Actions on disabled remotes
+            mnubtnEnableRemote.Visible = !node.Enabled;
+            mnubtnEnableRemoteAndFetch.Visible = !node.Enabled;
+        }
+
         private void OnNodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
         {
             _lastRightClickedNode = e.Button == MouseButtons.Right ? e.Node : null;
@@ -70,7 +92,8 @@ namespace GitUI.BranchTreePanel
         {
             RegisterClick(mnubtnCollapseAll, () => treeMain.CollapseAll());
             RegisterClick(mnubtnExpandAll, () => treeMain.ExpandAll());
-            RegisterClick(mnubtnReload, () => ThreadHelper.JoinableTaskFactory.RunAsync(() => ReloadAsync()).FileAndForget());
+
+            RegisterClick(mnubtnReload, () => RefreshTree());
 
             treeMain.NodeMouseClick += OnNodeMouseClick;
 
@@ -85,35 +108,22 @@ namespace GitUI.BranchTreePanel
             RegisterClick<RemoteBranchNode>(mnubtnDeleteRemoteBranch, remoteBranch => remoteBranch.Delete());
             RegisterClick<RemoteBranchNode>(mnubtnBranchCheckout, branch => branch.Checkout());
             RegisterClick<RemoteBranchNode>(mnubtnFetchOneBranch, remoteBranch => remoteBranch.Fetch());
-            RegisterClick<RemoteBranchNode>(mnubtnPullFromRemoteBranch, remoteBranch =>
-            {
-                remoteBranch.Fetch();
-                remoteBranch.Merge();
-            });
+            RegisterClick<RemoteBranchNode>(mnubtnPullFromRemoteBranch, remoteBranch => remoteBranch.FetchAndMerge());
             RegisterClick<RemoteBranchNode>(mnubtnCreateBranchBasedOnRemoteBranch, remoteBranch => remoteBranch.CreateBranch());
             RegisterClick<RemoteBranchNode>(mnubtnMergeBranch, remoteBranch => remoteBranch.Merge());
             RegisterClick<RemoteBranchNode>(mnubtnRebase, remoteBranch => remoteBranch.Rebase());
             RegisterClick<RemoteBranchNode>(mnubtnReset, remoteBranch => remoteBranch.Reset());
             RegisterClick<RemoteBranchNode>(mnubtnFilterRemoteBranchInRevisionGrid, FilterInRevisionGrid);
-            RegisterClick<RemoteBranchNode>(mnubtnRemoteBranchFetchAndCheckout, b =>
-            {
-                b.Fetch();
-                b.Checkout();
-            });
-            RegisterClick<RemoteBranchNode>(mnubtnFetchCreateBranch, b =>
-            {
-                b.Fetch();
-                b.CreateBranch();
-            });
-            RegisterClick<RemoteBranchNode>(mnubtnFetchRebase, b =>
-            {
-                b.Fetch();
-                b.Rebase();
-            });
+            RegisterClick<RemoteBranchNode>(mnubtnRemoteBranchFetchAndCheckout, remoteBranch => remoteBranch.FetchAndCheckout());
+            RegisterClick<RemoteBranchNode>(mnubtnFetchCreateBranch, remoteBranch => remoteBranch.FetchAndCreateBranch());
+            RegisterClick<RemoteBranchNode>(mnubtnFetchRebase, remoteBranch => remoteBranch.FetchAndRebase());
             Node.RegisterContextMenu(typeof(RemoteBranchNode), menuRemote);
 
+            RegisterClick<RemoteRepoNode>(mnubtnManageRemotes, remoteBranch => remoteBranch.PopupManageRemotesForm());
             RegisterClick<RemoteRepoNode>(mnubtnFetchAllBranchesFromARemote, remote => remote.Fetch());
-            RegisterClick<RemoteRepoNode>(mnubtnManageRemotes, remoteBranch => PopupManageRemotesForm(remoteBranch.FullPath));
+            RegisterClick<RemoteRepoNode>(mnubtnEnableRemote, remote => remote.Enable(fetch: false));
+            RegisterClick<RemoteRepoNode>(mnubtnEnableRemoteAndFetch, remote => remote.Enable(fetch: true));
+            RegisterClick<RemoteRepoNode>(mnubtnDisableRemote, remote => remote.Disable());
             Node.RegisterContextMenu(typeof(RemoteRepoNode), menuRemoteRepoNode);
 
             RegisterClick<TagNode>(mnubtnCreateBranchForTag, tag => tag.CreateBranch());
@@ -121,17 +131,12 @@ namespace GitUI.BranchTreePanel
             RegisterClick<TagNode>(mnuBtnCheckoutTag, tag => tag.Checkout());
             Node.RegisterContextMenu(typeof(TagNode), menuTag);
 
-            RegisterClick(mnuBtnManageRemotesFromRootNode, () => PopupManageRemotesForm(remoteName: null));
+            RegisterClick(mnuBtnManageRemotesFromRootNode, () => _remotesTree.PopupManageRemotesForm(remoteName: null));
         }
 
         private void FilterInRevisionGrid(BaseBranchNode branch)
         {
             _filterBranchHelper?.SetBranchFilter(branch.FullPath, refresh: true);
-        }
-
-        private void PopupManageRemotesForm(string remoteName)
-        {
-            UICommands.StartRemotesDialog(this, remoteName);
         }
 
         private void contextMenu_Opening(object sender, CancelEventArgs e)
@@ -144,6 +149,7 @@ namespace GitUI.BranchTreePanel
 
             ContextMenuAddExpandCollapseTree(contextMenu);
             ContextMenuBranchSpecific(contextMenu);
+            ContextMenuRemoteRepoSpecific(contextMenu);
         }
     }
 }

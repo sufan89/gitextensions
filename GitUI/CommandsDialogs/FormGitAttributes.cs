@@ -27,11 +27,17 @@ namespace GitUI.CommandsDialogs
         public string GitAttributesFile = string.Empty;
         private readonly IFullPathResolver _fullPathResolver;
 
+        [Obsolete("For VS designer and translation test only. Do not remove.")]
+        private FormGitAttributes()
+        {
+            InitializeComponent();
+        }
+
         public FormGitAttributes(GitUICommands commands)
             : base(commands)
         {
             InitializeComponent();
-            Translate();
+            InitializeComplete();
             _fullPathResolver = new FullPathResolver(() => Module.WorkingDir);
         }
 

@@ -5,3 +5,6 @@
 *.cs text diff=csharp
 *.sln text eol=crlf
 *.sh text eol=lf
+*.py text eol=lf
+*.bin binary
+*.approved.* binary

@@ -2,9 +2,8 @@
 using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Config;
-
 using GitUI.UserControls;
-
+using GitUIPluginInterfaces;
 using ResourceManager;
 
 namespace GitUI
@@ -30,24 +29,24 @@ namespace GitUI
         {
         }
 
-        public FormRemoteProcess(GitModule module, string process, string arguments)
+        public FormRemoteProcess(GitModule module, string process, ArgumentString arguments)
             : base(process, arguments, module.WorkingDir, null, true)
         {
             Module = module;
         }
 
-        public FormRemoteProcess(GitModule module, string arguments)
+        public FormRemoteProcess(GitModule module, ArgumentString arguments)
             : base(null, arguments, module.WorkingDir, null, true)
         {
             Module = module;
         }
 
-        public static new bool ShowDialog(GitModuleForm owner, string arguments)
+        public static new bool ShowDialog(GitModuleForm owner, ArgumentString arguments)
         {
             return ShowDialog(owner, owner.Module, arguments);
         }
 
-        public static new bool ShowDialog(IWin32Window owner, GitModule module, string arguments)
+        public static new bool ShowDialog(IWin32Window owner, GitModule module, ArgumentString arguments)
         {
             using (var formRemoteProcess = new FormRemoteProcess(module, arguments))
             {
@@ -61,7 +60,7 @@ namespace GitUI
         /// <summary>
         /// When cloning a remote using putty, sometimes an error occurs that the fingerprint is not known.
         /// This is fixed by trying to connect from the command line, and choose yes when asked for storing
-        /// the fingerpring. Just a dirty fix...
+        /// the fingerprint. Just a dirty fix...
         /// </summary>
         public void SetUrlTryingToConnect(string url)
         {
@@ -86,9 +85,11 @@ namespace GitUI
             // An error occurred!
             if (isError && Plink)
             {
-                // there might be an other error, this condition is too weak
+                var output = GetOutputString();
+
+                // there might be another error, this condition is too weak
                 /*
-                if (GetOutputString().Contains("successfully authenticated"))
+                if (output.Contains("successfully authenticated"))
                 {
                     isError = false;
                     return false;
@@ -96,7 +97,7 @@ namespace GitUI
                 */
 
                 // If the authentication failed because of a missing key, ask the user to supply one.
-                if (GetOutputString().Contains("FATAL ERROR") && GetOutputString().Contains("authentication"))
+                if (output.Contains("FATAL ERROR") && output.Contains("authentication"))
                 {
                     if (FormPuttyError.AskForKey(this, out var loadedKey))
                     {
@@ -113,7 +114,7 @@ namespace GitUI
                     }
                 }
 
-                if (GetOutputString().ToLower().Contains("the server's host key is not cached in the registry"))
+                if (output.Contains("the server's host key is not cached in the registry", StringComparison.OrdinalIgnoreCase))
                 {
                     string remoteUrl;
 
@@ -145,13 +146,7 @@ namespace GitUI
         {
             if (!remoteUrl.IsNullOrEmpty() && MessageBoxes.CacheHostkey(owner))
             {
-                remoteUrl = GitCommandHelpers.GetPlinkCompatibleUrl(remoteUrl);
-
-                module.RunExternalCmdShowConsole(
-                    "cmd.exe",
-                    string.Format("/k \"\"{0}\" -T {1}\"", AppSettings.Plink, remoteUrl));
-
-                return true;
+                return new Plink().Connect(remoteUrl);
             }
 
             return false;
@@ -159,34 +154,29 @@ namespace GitUI
 
         protected override void DataReceived(object sender, TextEventArgs e)
         {
-            if (Plink)
+            if (Plink && e.Text.Contains("If you trust this host, enter \"y\" to add the key to"))
             {
-                if (e.Text.Contains("If you trust this host, enter \"y\" to add the key to"))
+                if (MessageBox.Show(this, _fingerprintNotRegistredText.Text, _fingerprintNotRegistredTextCaption.Text, MessageBoxButtons.YesNo) == DialogResult.Yes)
                 {
-                    if (MessageBox.Show(this, _fingerprintNotRegistredText.Text, _fingerprintNotRegistredTextCaption.Text, MessageBoxButtons.YesNo) == DialogResult.Yes)
+                    string remoteUrl;
+                    if (string.IsNullOrEmpty(_urlTryingToConnect))
                     {
-                        string remoteUrl;
-                        if (string.IsNullOrEmpty(_urlTryingToConnect))
-                        {
-                            remoteUrl = Module.GetSetting(string.Format(SettingKeyString.RemoteUrl, Remote));
-                            remoteUrl = string.IsNullOrEmpty(remoteUrl) ? Remote : remoteUrl;
-                        }
-                        else
-                        {
-                            remoteUrl = _urlTryingToConnect;
-                        }
-
-                        remoteUrl = GitCommandHelpers.GetPlinkCompatibleUrl(remoteUrl);
-
-                        Module.RunExternalCmdShowConsole("cmd.exe", string.Format("/k \"\"{0}\" {1}\"", AppSettings.Plink, remoteUrl));
-
-                        _restart = true;
-                        Reset();
+                        remoteUrl = Module.GetSetting(string.Format(SettingKeyString.RemoteUrl, Remote));
+                        remoteUrl = string.IsNullOrEmpty(remoteUrl) ? Remote : remoteUrl;
                     }
                     else
                     {
-                        KillProcess();
+                        remoteUrl = _urlTryingToConnect;
                     }
+
+                    new Plink().Connect(remoteUrl);
+
+                    _restart = true;
+                    Reset();
+                }
+                else
+                {
+                    KillProcess();
                 }
             }
 

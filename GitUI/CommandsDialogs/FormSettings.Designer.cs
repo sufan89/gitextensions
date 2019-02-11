@@ -79,7 +79,7 @@ namespace GitUI.CommandsDialogs
             //
             // pictureBox2
             //
-            this.pictureBox2.Image = global::GitUI.Properties.Resources.error;
+            this.pictureBox2.Image = global::GitUI.Properties.Images.StatusBadgeError;
             this.pictureBox2.Location = new System.Drawing.Point(3, 4);
             this.pictureBox2.Name = "pictureBox2";
             this.pictureBox2.Size = new System.Drawing.Size(54, 50);
@@ -128,14 +128,13 @@ namespace GitUI.CommandsDialogs
             // settingsTreeView
             //
             this.settingsTreeView.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.settingsTreeView.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.settingsTreeView.Location = new System.Drawing.Point(3, 3);
             this.settingsTreeView.MinimumSize = new System.Drawing.Size(100, 220);
             this.settingsTreeView.Name = "settingsTreeView";
             this.tableLayoutPanel3.SetRowSpan(this.settingsTreeView, 2);
             this.settingsTreeView.Size = new System.Drawing.Size(194, 600);
             this.settingsTreeView.TabIndex = 1;
-            this.settingsTreeView.SettingsPageSelected += new System.EventHandler<GitUI.CommandsDialogs.SettingsDialog.SettingsPageSelectedEventArgs>(this.settingsTreeViewUserControl1_SettingsPageSelected);
+            this.settingsTreeView.SettingsPageSelected += new System.EventHandler<GitUI.CommandsDialogs.SettingsDialog.SettingsPageSelectedEventArgs>(this.OnSettingsPageSelected);
             //
             // panelCurrentSettingsPage
             //
@@ -217,12 +216,11 @@ namespace GitUI.CommandsDialogs
             this.Controls.Add(this.tableLayoutPanel3);
             this.MaximizeBox = false;
             this.MinimizeBox = false;
-            this.MinimumSize = new System.Drawing.Size(966, 680);
+            this.MinimumSize = new System.Drawing.Size(966, 785);
             this.Name = "FormSettings";
             this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Show;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Settings";
-            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormSettings_FormClosing);
             this.Load += new System.EventHandler(this.FormSettings_Load);
             this.Shown += new System.EventHandler(this.FormSettings_Shown);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();

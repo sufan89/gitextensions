@@ -12,9 +12,10 @@
     <AssemblyName>GitExtensions</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <ApplicationIcon>..\Bin\Logo\git-extensions-logo-final_mixed-256.ico</ApplicationIcon>
+    <ApplicationIcon>..\Logo\git-extensions-logo.ico</ApplicationIcon>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <PropertyGroup>
     <!-- Default debugging command starts GitExtensions browsing this repository -->
@@ -47,6 +48,9 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="PSTaskDialog">
+      <HintPath>..\Bin\PSTaskDialog.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
@@ -55,27 +59,9 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="Program.cs" />
-    <EmbeddedResource Include="Properties\Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <Compile Include="Properties\Resources.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
-      <DesignTime>True</DesignTime>
-    </Compile>
+    <Compile Include="Properties\AssemblyInfo.cs" />
     <None Include="app.config" />
     <None Include="app.manifest" />
-    <None Include="Properties\Settings.settings">
-      <Generator>SettingsSingleFileGenerator</Generator>
-      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
-    </None>
-    <Compile Include="Properties\Settings.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Settings.settings</DependentUpon>
-      <DesignTimeSharedInput>True</DesignTimeSharedInput>
-    </Compile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Externals\NBug\NBug\NBug.csproj">
@@ -104,16 +90,14 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="..\Bin\Logo\cow-head-256.ico">
-      <Link>Resources\cow-head-256.ico</Link>
-    </Content>
-    <Content Include="..\Bin\Logo\git-extensions-logo-final-256.ico">
-      <Link>Resources\git-extensions-logo-final-256.ico</Link>
-    </Content>
-    <Content Include="..\Bin\Logo\git-extensions-logo-final_mixed-256.ico">
-      <Link>Resources\git-extensions-logo-final_mixed-256.ico</Link>
-    </Content>
     <EmbeddedResource Include="AutoCompleteRegexes.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="GitInfo">
+      <Version>2.0.18</Version>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="AddPluginBinaries" AfterTargets="ResolveProjectReferences">

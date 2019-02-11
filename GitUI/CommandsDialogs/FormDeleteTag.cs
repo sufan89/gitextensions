@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.Windows.Forms;
+using GitExtUtils.GitUI;
 using GitUI.Script;
 using GitUIPluginInterfaces;
 
@@ -8,11 +10,22 @@ namespace GitUI.CommandsDialogs
 {
     public partial class FormDeleteTag : GitModuleForm
     {
+        [Obsolete("For VS designer and translation test only. Do not remove.")]
+        private FormDeleteTag()
+        {
+            InitializeComponent();
+        }
+
         public FormDeleteTag(GitUICommands commands, string tag)
             : base(commands)
         {
             InitializeComponent();
-            Translate();
+
+            // scale up for hi DPI
+            MaximumSize = DpiUtil.Scale(new Size(1000, 210));
+            MinimumSize = DpiUtil.Scale(new Size(470, 210));
+
+            InitializeComplete();
             Tag = tag;
         }
 

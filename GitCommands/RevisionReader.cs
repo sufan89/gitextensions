@@ -28,15 +28,32 @@ namespace GitCommands
 
     public sealed class RevisionReader : IDisposable
     {
+        private const string FullFormat =
+
+              // These header entries can all be decoded from the bytes directly.
+              // Each hash is 20 bytes long.
+
+              /* Object ID       */ "%H" +
+              /* Tree ID         */ "%T" +
+              /* Parent IDs      */ "%P%n" +
+              /* Author date     */ "%at%n" +
+              /* Commit date     */ "%ct%n" +
+              /* Encoding        */ "%e%n" +
+              /*
+               Items below here must be decoded as strings to support non-ASCII.
+               */
+              /* Author name     */ "%aN%n" +
+              /* Author email    */ "%aE%n" +
+              /* Committer name  */ "%cN%n" +
+              /* Committer email */ "%cE%n" +
+              /* Commit subject  */ "%s%n%n" +
+              /* Commit body     */ "%b";
+
         private readonly CancellationTokenSequence _cancellationTokenSequence = new CancellationTokenSequence();
-
-        public int RevisionCount { get; private set; }
-
-        /// <value>Refs loaded during the last call to <see cref="Execute"/>.</value>
-        public IReadOnlyList<IGitRef> LatestRefs { get; private set; } = Array.Empty<IGitRef>();
 
         public void Execute(
             GitModule module,
+            IReadOnlyList<IGitRef> refs,
             IObserver<GitRevision> subject,
             RefFilterOptions refFilterOptions,
             string branchFilter,
@@ -45,7 +62,7 @@ namespace GitCommands
             [CanBeNull] Func<GitRevision, bool> revisionPredicate)
         {
             ThreadHelper.JoinableTaskFactory
-                .RunAsync(() => ExecuteAsync(module, subject, refFilterOptions, branchFilter, revisionFilter, pathFilter, revisionPredicate))
+                .RunAsync(() => ExecuteAsync(module, refs, subject, refFilterOptions, branchFilter, revisionFilter, pathFilter, revisionPredicate))
                 .FileAndForget(
                     ex =>
                     {
@@ -56,6 +73,7 @@ namespace GitCommands
 
         private async Task ExecuteAsync(
             GitModule module,
+            IReadOnlyList<IGitRef> refs,
             IObserver<GitRevision> subject,
             RefFilterOptions refFilterOptions,
             string branchFilter,
@@ -63,15 +81,13 @@ namespace GitCommands
             string pathFilter,
             [CanBeNull] Func<GitRevision, bool> revisionPredicate)
         {
-            ThreadHelper.ThrowIfNotOnUIThread();
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
 
             var token = _cancellationTokenSequence.Next();
 
-            RevisionCount = 0;
+            var revisionCount = 0;
 
             await TaskScheduler.Default;
-
-            subject.OnNext(null);
 
             token.ThrowIfCancellationRequested();
 
@@ -81,44 +97,22 @@ namespace GitCommands
 
             token.ThrowIfCancellationRequested();
 
-            LatestRefs = module.GetRefs();
-            UpdateSelectedRef(module, LatestRefs, branchName);
-            var refsByObjectId = LatestRefs.ToLookup(head => head.Guid);
+            UpdateSelectedRef(module, refs, branchName);
+            var refsByObjectId = refs.ToLookup(head => head.ObjectId);
 
             token.ThrowIfCancellationRequested();
 
-            const string fullFormat =
+            var arguments = BuildArguments(refFilterOptions, branchFilter, revisionFilter, pathFilter);
 
-                // These header entries can all be decoded from the bytes directly.
-                // Each hash is 20 bytes long. There is always a
-
-                /* Object ID       */ "%H" +
-                /* Tree ID         */ "%T" +
-                /* Parent IDs      */ "%P%n" +
-                /* Author date     */ "%at%n" +
-                /* Commit date     */ "%ct%n" +
-                /* Encoding        */ "%e%n" +
-
-                // Items below here must be decoded as strings to support non-ASCII
-
-                /* Author name     */ "%aN%n" +
-                /* Author email    */ "%aE%n" +
-                /* Committer name  */ "%cN%n" +
-                /* Committer email */ "%cE%n" +
-                /* Commit subject  */ "%s%n%n" +
-                /* Commit body     */ "%b";
-
-            // TODO add AppBuilderExtensions support for flags enums, starting with RefFilterOptions, then use it in the below construction
-
-            var arguments = BuildArguments();
-
+#if TRACE
             var sw = Stopwatch.StartNew();
+#endif
 
             // This property is relatively expensive to call for every revision, so
             // cache it for the duration of the loop.
             var logOutputEncoding = module.LogOutputEncoding;
 
-            using (var process = module.RunGitCmdDetached(arguments.ToString(), GitModule.LosslessEncoding))
+            using (var process = module.GitCommandRunner.RunDetached(arguments, redirectOutput: true, outputEncoding: GitModule.LosslessEncoding))
             {
                 token.ThrowIfCancellationRequested();
 
@@ -135,64 +129,78 @@ namespace GitCommands
                     {
                         if (revisionPredicate == null || revisionPredicate(revision))
                         {
-                            // Remove full commit message to reduce memory consumption (28% for a repo with 69K commits)
-                            // Full commit message is used in InMemFilter but later it's not needed
-                            revision.Body = null;
+                            // The full commit message body is used initially in InMemFilter, after which it isn't
+                            // strictly needed and can be re-populated asynchronously.
+                            //
+                            // We keep full multiline message bodies within the last six months.
+                            // Commits earlier than that have their properties set to null and the
+                            // memory will be GCd.
+                            if (DateTime.Now - revision.AuthorDate > TimeSpan.FromDays(30 * 6))
+                            {
+                                revision.Body = null;
+                            }
 
-                            // Look up any refs associate with this revision
-                            revision.Refs = refsByObjectId[revision.Guid].AsReadOnlyList();
+                            // Look up any refs associated with this revision
+                            revision.Refs = refsByObjectId[revision.ObjectId].AsReadOnlyList();
 
-                            RevisionCount++;
+                            revisionCount++;
 
                             subject.OnNext(revision);
                         }
                     }
                 }
 
-                Trace.WriteLine($"**** [{nameof(RevisionReader)}] Emitted {RevisionCount} revisions in {sw.Elapsed.TotalMilliseconds:#,##0.#} ms. bufferSize={buffer.Length} poolCount={stringPool.Count}");
+#if TRACE
+                Trace.WriteLine($"**** [{nameof(RevisionReader)}] Emitted {revisionCount} revisions in {sw.Elapsed.TotalMilliseconds:#,##0.#} ms. bufferSize={buffer.Length} poolCount={stringPool.Count}");
+#endif
             }
-
-            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(token);
 
             if (!token.IsCancellationRequested)
             {
                 subject.OnCompleted();
             }
+        }
 
-            ArgumentBuilder BuildArguments()
+        private ArgumentBuilder BuildArguments(RefFilterOptions refFilterOptions,
+            string branchFilter,
+            string revisionFilter,
+            string pathFilter)
+        {
+            return new GitArgumentBuilder("log")
             {
-                return new ArgumentBuilder
+                "-z",
+                branchFilter,
+                $"--pretty=format:\"{FullFormat}\"",
                 {
-                    "log",
-                    "-z",
-                    $"--pretty=format:\"{fullFormat}\"",
-                    { AppSettings.OrderRevisionByDate, "--date-order", "--topo-order" },
-                    { AppSettings.ShowReflogReferences, "--reflog" },
+                    refFilterOptions.HasFlag(RefFilterOptions.FirstParent),
+                    "--first-parent",
+                    new ArgumentBuilder
                     {
-                        refFilterOptions.HasFlag(RefFilterOptions.All),
-                        "--all",
-                        new ArgumentBuilder
+                        { AppSettings.ShowReflogReferences, "--reflog" },
                         {
+                            refFilterOptions.HasFlag(RefFilterOptions.All),
+                            "--all",
+                            new ArgumentBuilder
                             {
-                                refFilterOptions.HasFlag(RefFilterOptions.Branches) &&
-                                !branchFilter.IsNullOrWhiteSpace() &&
-                                branchFilter.IndexOfAny(new[] { '?', '*', '[' }) != -1,
-                                "--branches=" + branchFilter
-                            },
-                            { refFilterOptions.HasFlag(RefFilterOptions.Remotes), "--remotes" },
-                            { refFilterOptions.HasFlag(RefFilterOptions.Tags), "--tags" },
-                        }.ToString()
-                    },
-                    { refFilterOptions.HasFlag(RefFilterOptions.Boundary), "--boundary" },
-                    { refFilterOptions.HasFlag(RefFilterOptions.ShowGitNotes), "--not --glob=notes --not" },
-                    { refFilterOptions.HasFlag(RefFilterOptions.NoMerges), "--no-merges" },
-                    { refFilterOptions.HasFlag(RefFilterOptions.FirstParent), "--first-parent" },
-                    { refFilterOptions.HasFlag(RefFilterOptions.SimplifyByDecoration), "--simplify-by-decoration" },
-                    revisionFilter,
-                    "--",
-                    pathFilter
-                };
-            }
+                                {
+                                    refFilterOptions.HasFlag(RefFilterOptions.Branches) &&
+                                    !branchFilter.IsNullOrWhiteSpace() && branchFilter.IndexOfAny(new[] { '?', '*', '[' }) != -1,
+                                    "--branches=" + branchFilter
+                                },
+                                { refFilterOptions.HasFlag(RefFilterOptions.Remotes), "--remotes" },
+                                { refFilterOptions.HasFlag(RefFilterOptions.Tags), "--tags" },
+                            }.ToString()
+                        },
+                        { refFilterOptions.HasFlag(RefFilterOptions.Boundary), "--boundary" },
+                        { refFilterOptions.HasFlag(RefFilterOptions.ShowGitNotes), "--not --glob=notes --not" },
+                        { refFilterOptions.HasFlag(RefFilterOptions.NoMerges), "--no-merges" },
+                        { refFilterOptions.HasFlag(RefFilterOptions.SimplifyByDecoration), "--simplify-by-decoration" }
+                    }.ToString()
+                },
+                revisionFilter,
+                "--",
+                pathFilter
+            };
         }
 
         private static void UpdateSelectedRef(GitModule module, IReadOnlyList<IGitRef> refs, string branchName)
@@ -201,7 +209,7 @@ namespace GitCommands
 
             if (selectedRef != null)
             {
-                selectedRef.Selected = true;
+                selectedRef.IsSelected = true;
 
                 var localConfigFile = module.LocalConfigFile;
                 var selectedHeadMergeSource = refs.FirstOrDefault(
@@ -211,12 +219,14 @@ namespace GitCommands
 
                 if (selectedHeadMergeSource != null)
                 {
-                    selectedHeadMergeSource.SelectedHeadMergeSource = true;
+                    selectedHeadMergeSource.IsSelectedHeadMergeSource = true;
                 }
             }
         }
 
-        private static bool TryParseRevision(GitModule module, ArraySegment<byte> chunk, StringPool stringPool, Encoding logOutputEncoding, [CanBeNull] out GitRevision revision)
+        [ContractAnnotation("=>false,revision:null")]
+        [ContractAnnotation("=>true,revision:notnull")]
+        private static bool TryParseRevision(GitModule module, ArraySegment<byte> chunk, StringPool stringPool, Encoding logOutputEncoding, out GitRevision revision)
         {
             // The 'chunk' of data contains a complete git log item, encoded.
             // This method decodes that chunk and produces a revision object.
@@ -224,6 +234,15 @@ namespace GitCommands
             // All values which can be read directly from the byte array are arranged
             // at the beginning of the chunk. The latter part of the chunk will require
             // decoding as a string.
+
+            if (chunk.Count == 0)
+            {
+                // "git log -z --name-only" returns multiple consecutive null bytes when logging
+                // the history of a single file. Haven't worked out why, but it's safe to skip
+                // such chunks.
+                revision = default;
+                return false;
+            }
 
             #region Object ID, Tree ID, Parent IDs
 
@@ -235,18 +254,43 @@ namespace GitCommands
                 return false;
             }
 
-            var objectIdStr = objectId.ToString();
-
             var array = chunk.Array;
             var offset = chunk.Offset + (ObjectId.Sha1CharCount * 2);
             var lastOffset = chunk.Offset + chunk.Count;
 
             // Next we have zero or more parent IDs separated by ' ' and terminated by '\n'
-            var parentIds = new List<ObjectId>(capacity: 1);
+            var parentIds = new ObjectId[CountParents(offset)];
+            var parentIndex = 0;
+
+            int CountParents(int baseOffset)
+            {
+                if (array[baseOffset] == '\n')
+                {
+                    return 0;
+                }
+
+                var count = 1;
+
+                while (true)
+                {
+                    baseOffset += ObjectId.Sha1CharCount;
+                    var c = array[baseOffset];
+
+                    if (c != ' ')
+                    {
+                        break;
+                    }
+
+                    count++;
+                    baseOffset++;
+                }
+
+                return count;
+            }
 
             while (true)
             {
-                if (offset >= lastOffset - 21)
+                if (offset >= lastOffset - ObjectId.Sha1CharCount - 1)
                 {
                     revision = default;
                     return false;
@@ -274,7 +318,7 @@ namespace GitCommands
                     return false;
                 }
 
-                parentIds.Add(parentId);
+                parentIds[parentIndex++] = parentId;
                 offset += ObjectId.Sha1CharCount;
             }
 
@@ -336,7 +380,7 @@ namespace GitCommands
 
             #endregion
 
-            #region Encoded string valies (names, emails, subject, body)
+            #region Encoded string values (names, emails, subject, body)
 
             // Finally, decode the names, email, subject and body strings using the required text encoding
             var s = encoding.GetString(array, offset, lastOffset - offset);
@@ -349,15 +393,8 @@ namespace GitCommands
             var committerEmail = reader.ReadLine(stringPool);
 
             var subject = reader.ReadLine(advance: false);
-            Debug.Assert(subject != null, "subject != null");
 
-            // NOTE the convention is that the Subject string is duplicated at the start of the Body string
-            // Therefore we read the subject twice.
-            // If there are not enough characters remaining for a body, then just assign the subject string directly.
-            var body = reader.Remaining - subject.Length == 2 ? subject : reader.ReadToEnd();
-            Debug.Assert(body != null, "body != null");
-
-            if (author == null || authorEmail == null || committer == null || committerEmail == null || subject == null || body == null)
+            if (author == null || authorEmail == null || committer == null || committerEmail == null || subject == null)
             {
                 // TODO log this parse error
                 Debug.Fail("Unable to read an entry from the log -- this should not happen");
@@ -365,16 +402,24 @@ namespace GitCommands
                 return false;
             }
 
+            // NOTE the convention is that the Subject string is duplicated at the start of the Body string
+            // Therefore we read the subject twice.
+            // If there are not enough characters remaining for a body, then just assign the subject string directly.
+            var body = reader.Remaining - subject.Length == 2 ? subject : reader.ReadToEnd();
+
+            if (body == null)
+            {
+                // TODO log this parse error
+                Debug.Fail("Unable to read body from the log -- this should not happen");
+                revision = default;
+                return false;
+            }
+
             #endregion
 
-            revision = new GitRevision(null)
+            revision = new GitRevision(objectId)
             {
-                // TODO are we really sure we can't make Revision.Guid an ObjectId?
-                Guid = objectIdStr,
-
-                // TODO take IReadOnlyList<ObjectId> instead
-                ParentGuids = parentIds.ToArray(p => p.ToString()),
-
+                ParentIds = parentIds,
                 TreeGuid = treeId,
                 Author = author,
                 AuthorEmail = authorEmail,
@@ -385,7 +430,8 @@ namespace GitCommands
                 MessageEncoding = encodingName,
                 Subject = subject,
                 Body = body,
-                HasMultiLineMessage = !ReferenceEquals(subject, body)
+                HasMultiLineMessage = !ReferenceEquals(subject, body),
+                HasNotes = false
             };
 
             return true;
@@ -460,5 +506,22 @@ namespace GitCommands
         }
 
         #endregion
+
+        internal TestAccessor GetTestAccessor()
+            => new TestAccessor(this);
+
+        public readonly struct TestAccessor
+        {
+            private readonly RevisionReader _revisionReader;
+
+            public TestAccessor(RevisionReader revisionReader)
+            {
+                _revisionReader = revisionReader;
+            }
+
+            public ArgumentBuilder BuildArgumentsBuildArguments(RefFilterOptions refFilterOptions,
+                string branchFilter, string revisionFilter, string pathFilter) =>
+                _revisionReader.BuildArguments(refFilterOptions, branchFilter, revisionFilter, pathFilter);
+        }
     }
 }

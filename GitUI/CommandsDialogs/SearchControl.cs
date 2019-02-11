@@ -13,7 +13,7 @@ namespace GitUI.CommandsDialogs
         private readonly Func<string, IEnumerable<T>> _getCandidates;
         private readonly Action<Size> _onSizeChanged;
         private readonly AsyncLoader _backgroundLoader = new AsyncLoader();
-        private bool _isUpdatingTextFromCode = false;
+        private bool _isUpdatingTextFromCode;
         public event Action OnTextEntered;
         public event Action OnCancelled;
 
@@ -26,31 +26,22 @@ namespace GitUI.CommandsDialogs
         public SearchControl([NotNull]Func<string, IEnumerable<T>> getCandidates, Action<Size> onSizeChanged)
         {
             InitializeComponent();
-            txtSearchBox.LostFocus += TxtSearchBoxOnLostFocus;
-            listBoxSearchResult.LostFocus += ListBoxSearchResultOnLostFocus;
+
+            txtSearchBox.LostFocus += delegate { CloseDropDownWhenLostFocus(); };
+            listBoxSearchResult.LostFocus += delegate { CloseDropDownWhenLostFocus(); };
             listBoxSearchResult.Left = Left;
             txtSearchBox.Select();
 
             _getCandidates = getCandidates;
             _onSizeChanged = onSizeChanged;
             AutoFit();
-        }
 
-        private void ListBoxSearchResultOnLostFocus(object sender, EventArgs eventArgs)
-        {
-            CloseDropdownWhenLostFocus();
-        }
-
-        private void TxtSearchBoxOnLostFocus(object sender, EventArgs eventArgs)
-        {
-            CloseDropdownWhenLostFocus();
-        }
-
-        private void CloseDropdownWhenLostFocus()
-        {
-            if (!txtSearchBox.Focused && !listBoxSearchResult.Focused)
+            void CloseDropDownWhenLostFocus()
             {
-                CloseDropdown();
+                if (!txtSearchBox.Focused && !listBoxSearchResult.Focused)
+                {
+                    CloseDropdown();
+                }
             }
         }
 
@@ -92,6 +83,14 @@ namespace GitUI.CommandsDialogs
 
             listBoxSearchResult.Visible = true;
 
+            var txtBoxOnScreen = PointToScreen(txtSearchBox.Location + new Size(0, txtSearchBox.Height));
+            if (ParentForm != null && !ParentForm.Controls.Contains(listBoxSearchResult))
+            {
+                ParentForm.Controls.Add(listBoxSearchResult);
+                var listBoxLocationOnScreen = txtBoxOnScreen;
+                listBoxSearchResult.Location = ParentForm.PointToClient(listBoxLocationOnScreen);
+            }
+
             int width = 300;
 
             using (Graphics g = listBoxSearchResult.CreateGraphics())
@@ -106,17 +105,8 @@ namespace GitUI.CommandsDialogs
             listBoxSearchResult.Width = width;
             listBoxSearchResult.Height = Math.Min(800, listBoxSearchResult.Font.Height * (listBoxSearchResult.Items.Count + 1));
 
-            Width = listBoxSearchResult.Width;
             _onSizeChanged(new Size(width + Margin.Right + Margin.Left,
                 listBoxSearchResult.Height + txtSearchBox.Height));
-            var txtBoxOnScreen = PointToScreen(txtSearchBox.Location + new Size(0, txtSearchBox.Height));
-
-            if (ParentForm != null && !ParentForm.Controls.Contains(listBoxSearchResult))
-            {
-                ParentForm.Controls.Add(listBoxSearchResult);
-                var listBoxLocationOnScreen = txtBoxOnScreen;
-                listBoxSearchResult.Location = ParentForm.PointToClient(listBoxLocationOnScreen);
-            }
 
             listBoxSearchResult.BringToFront();
         }

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using GitCommands;
 using GitCommands.Settings;
 using GitCommands.Utils;
@@ -104,7 +103,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog
             return false;
         }
 
-        private IEnumerable<string> GetGitLocations()
+        private static IEnumerable<string> GetGitLocations()
         {
             string envVariable = Environment.GetEnvironmentVariable("GITEXT_GIT");
             if (!string.IsNullOrEmpty(envVariable))
@@ -143,39 +142,6 @@ namespace GitUI.CommandsDialogs.SettingsDialog
                 "Programs", "Git\\");
         }
 
-        private IEnumerable<string> GetWindowsCommandLocations(string possibleNewPath = null)
-        {
-            if (!string.IsNullOrEmpty(possibleNewPath) && File.Exists(possibleNewPath))
-            {
-                yield return possibleNewPath;
-            }
-
-            if (!string.IsNullOrEmpty(AppSettings.GitCommandValue) && File.Exists(AppSettings.GitCommandValue))
-            {
-                yield return AppSettings.GitCommandValue;
-            }
-
-            foreach (var path in GetGitLocations())
-            {
-                if (Directory.Exists(path + @"bin\"))
-                {
-                    yield return path + @"bin\git.exe";
-                }
-            }
-
-            foreach (var path in GetGitLocations())
-            {
-                if (Directory.Exists(path + @"cmd\"))
-                {
-                    yield return path + @"cmd\git.exe";
-                    yield return path + @"cmd\git.cmd";
-                }
-            }
-
-            yield return "git";
-            yield return "git.cmd";
-        }
-
         public bool SolveGitExtensionsDir()
         {
             string fileName = AppSettings.GetGitExtensionsDirectory();
@@ -189,26 +155,78 @@ namespace GitUI.CommandsDialogs.SettingsDialog
             return false;
         }
 
-        public bool SolveGitCommand(string possibleNewPath = null)
+        public static bool SolveGitCommand(string possibleNewPath = null)
         {
             if (EnvUtils.RunningOnWindows())
             {
-                var command = (from cmd in GetWindowsCommandLocations(possibleNewPath)
-                               let output = ThreadHelper.JoinableTaskFactory.Run(() => Module.RunCmdAsync(cmd, string.Empty))
-                               where !string.IsNullOrEmpty(output)
-                               select cmd).FirstOrDefault();
-
-                if (command != null)
+                foreach (var command in GetWindowsCommandLocations())
                 {
-                    AppSettings.GitCommandValue = command;
-                    return true;
+                    if (TestGitCommand(command))
+                    {
+                        return true;
+                    }
                 }
 
                 return false;
             }
 
             AppSettings.GitCommandValue = "git";
-            return !string.IsNullOrEmpty(Module.RunGitCmd(""));
+            return TestGitCommand(AppSettings.GitCommandValue);
+
+            bool TestGitCommand(string command)
+            {
+                try
+                {
+                    string output = new Executable(command).GetOutput();
+                    if (!string.IsNullOrEmpty(output))
+                    {
+                        if (command != null)
+                        {
+                            AppSettings.GitCommandValue = command;
+                            return true;
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    // Ignore expection, we are trying to find a way to execute git.exe
+                }
+
+                return false;
+            }
+
+            IEnumerable<string> GetWindowsCommandLocations()
+            {
+                if (File.Exists(possibleNewPath))
+                {
+                    yield return possibleNewPath;
+                }
+
+                if (File.Exists(AppSettings.GitCommandValue))
+                {
+                    yield return AppSettings.GitCommandValue;
+                }
+
+                foreach (var path in GetGitLocations())
+                {
+                    if (Directory.Exists(path + @"bin\"))
+                    {
+                        yield return path + @"bin\git.exe";
+                    }
+                }
+
+                foreach (var path in GetGitLocations())
+                {
+                    if (Directory.Exists(path + @"cmd\"))
+                    {
+                        yield return path + @"cmd\git.exe";
+                        yield return path + @"cmd\git.cmd";
+                    }
+                }
+
+                yield return "git";
+                yield return "git.cmd";
+            }
         }
 
         public static bool CheckIfFileIsInPath(string fileName)
@@ -286,7 +304,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog
 
         public bool CanFindGitCmd()
         {
-            return !string.IsNullOrEmpty(Module.RunGitCmd(""));
+            return !string.IsNullOrEmpty(Module.GitExecutable.GetOutput(""));
         }
 
         public void AutoConfigMergeToolCmd()

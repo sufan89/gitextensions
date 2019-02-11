@@ -28,28 +28,24 @@ namespace GitUI.CommandsDialogs
         private readonly string _defaultToBranch;
         private readonly bool _startRebaseImmediately;
 
+        [Obsolete("For VS designer and translation test only. Do not remove.")]
         private FormRebase()
-            : this(null)
-        {
-        }
-
-        private FormRebase(GitUICommands commands)
-            : base(commands)
         {
             InitializeComponent();
-            Translate();
+        }
+
+        public FormRebase(GitUICommands commands, string defaultBranch)
+            : base(commands)
+        {
+            _defaultBranch = defaultBranch;
+            InitializeComponent();
+            InitializeComplete();
             helpImageDisplayUserControl1.Visible = !AppSettings.DontShowHelpImages;
             helpImageDisplayUserControl1.IsOnHoverShowImage2NoticeText = _hoverShowImageLabelText.Text;
             if (AppSettings.AlwaysShowAdvOpt)
             {
                 ShowOptions_LinkClicked(null, null);
             }
-        }
-
-        public FormRebase(GitUICommands commands, string defaultBranch)
-            : this(commands)
-        {
-            _defaultBranch = defaultBranch;
         }
 
         public FormRebase(GitUICommands commands, string from, string to, string defaultBranch, bool interactive = false,
@@ -59,6 +55,7 @@ namespace GitUI.CommandsDialogs
             txtFrom.Text = from;
             _defaultToBranch = to;
             chkInteractive.Checked = interactive;
+            chkAutosquash.Enabled = interactive;
             _startRebaseImmediately = startRebaseImmediately;
         }
 
@@ -265,7 +262,7 @@ namespace GitUI.CommandsDialogs
             }
         }
 
-        private void SolveMergeconflictsClick(object sender, EventArgs e)
+        private void SolveMergeConflictsClick(object sender, EventArgs e)
         {
             MergetoolClick(sender, e);
         }
@@ -289,7 +286,7 @@ namespace GitUI.CommandsDialogs
             {
                 if (chooseForm.ShowDialog(this) == DialogResult.OK && chooseForm.SelectedRevision != null)
                 {
-                    txtFrom.Text = chooseForm.SelectedRevision.Guid.Substring(0, 8);
+                    txtFrom.Text = chooseForm.SelectedRevision.ObjectId.ToShortString(8);
                 }
             }
         }

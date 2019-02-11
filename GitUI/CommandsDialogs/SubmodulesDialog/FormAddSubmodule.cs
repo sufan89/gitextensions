@@ -13,11 +13,17 @@ namespace GitUI.CommandsDialogs.SubmodulesDialog
         private readonly TranslationString _remoteAndLocalPathRequired
             = new TranslationString("A remote path and local path are required");
 
+        [Obsolete("For VS designer and translation test only. Do not remove.")]
+        private FormAddSubmodule()
+        {
+            InitializeComponent();
+        }
+
         public FormAddSubmodule(GitUICommands commands)
             : base(commands)
         {
             InitializeComponent();
-            Translate();
+            InitializeComplete();
 
             ThreadHelper.JoinableTaskFactory.Run(async () =>
             {
@@ -51,8 +57,7 @@ namespace GitUI.CommandsDialogs.SubmodulesDialog
 
             using (WaitCursorScope.Enter())
             {
-                var addSubmoduleCmd = GitCommandHelpers.AddSubmoduleCmd(Directory.Text, LocalPath.Text, Branch.Text, chkForce.Checked);
-                FormProcess.ShowDialog(this, addSubmoduleCmd);
+                FormProcess.ShowDialog(this, GitCommandHelpers.AddSubmoduleCmd(Directory.Text, LocalPath.Text, Branch.Text, chkForce.Checked));
 
                 Close();
             }
@@ -65,7 +70,7 @@ namespace GitUI.CommandsDialogs.SubmodulesDialog
 
         private void BranchDropDown(object sender, EventArgs e)
         {
-            GitModule module = new GitModule(Directory.Text);
+            var module = new GitModule(Directory.Text);
 
             var heads = new List<IGitRef>
             {

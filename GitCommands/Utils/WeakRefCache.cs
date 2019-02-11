@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Timers;
 
@@ -26,9 +27,9 @@ namespace GitCommands.Utils
 
             lock (_weakMap)
             {
-                if (_weakMap.TryGetValue(objectUniqueKey, out var wref))
+                if (_weakMap.TryGetValue(objectUniqueKey, out var weakReference))
                 {
-                    cached = wref.Target;
+                    cached = weakReference.Target;
                 }
 
                 if (cached == null)
@@ -44,6 +45,8 @@ namespace GitCommands.Utils
                     }
                 }
             }
+
+            Debug.Assert(cached != null, "cached != null -- if this is violated, the annotations on SettingsContainer<,>.ctor cache are wrong");
 
             return (T)cached;
         }

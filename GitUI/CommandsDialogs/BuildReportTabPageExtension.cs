@@ -7,7 +7,10 @@ using System.Net;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands;
+using GitCommands.Settings;
 using GitUI.UserControls;
+using GitUIPluginInterfaces;
+using JetBrains.Annotations;
 
 namespace GitUI.CommandsDialogs
 {
@@ -15,19 +18,23 @@ namespace GitUI.CommandsDialogs
     {
         private readonly TabControl _tabControl;
         private readonly string _caption;
+        private readonly Func<IGitModule> _getModule;
 
         private TabPage _buildReportTabPage;
-        private WebBrowserCtrl _buildReportWebBrowser;
+        private WebBrowserControl _buildReportWebBrowser;
         private GitRevision _selectedGitRevision;
         private string _url;
 
-        public BuildReportTabPageExtension(TabControl tabControl, string caption)
+        public Control Control { get => _buildReportWebBrowser; } // for focusing
+
+        public BuildReportTabPageExtension(Func<IGitModule> getModule, TabControl tabControl, string caption)
         {
+            _getModule = getModule;
             _tabControl = tabControl;
             _caption = caption;
         }
 
-        public void FillBuildReport(GitRevision revision)
+        public void FillBuildReport([CanBeNull] GitRevision revision)
         {
             if (_selectedGitRevision != null)
             {
@@ -45,9 +52,10 @@ namespace GitUI.CommandsDialogs
 
             try
             {
+                var buildResultPageEnabled = IsBuildResultPageEnabled();
                 var buildInfoIsAvailable = !string.IsNullOrEmpty(revision?.BuildStatus?.Url);
 
-                if (buildInfoIsAvailable)
+                if (buildResultPageEnabled && buildInfoIsAvailable)
                 {
                     if (_buildReportTabPage == null)
                     {
@@ -121,7 +129,7 @@ namespace GitUI.CommandsDialogs
                 Text = _caption,
                 UseVisualStyleBackColor = true
             };
-            _buildReportWebBrowser = new WebBrowserCtrl
+            _buildReportWebBrowser = new WebBrowserControl
             {
                 Dock = DockStyle.Fill
             };
@@ -173,6 +181,25 @@ namespace GitUI.CommandsDialogs
             }
         }
 
+        private bool IsBuildResultPageEnabled()
+        {
+            var settings = GetModule().GetEffectiveSettings() as RepoDistSettings;
+            return settings?.BuildServer.ShowBuildResultPage.ValueOrDefault ?? false;
+        }
+
+        private IGitModule GetModule()
+        {
+            var module = _getModule();
+
+            if (module == null)
+            {
+                throw new ArgumentException($"Require a valid instance of {nameof(IGitModule)}");
+            }
+
+            return module;
+        }
+
+        [CanBeNull]
         private static string DetermineFavIconUrl(HtmlDocument htmlDocument)
         {
             var links = htmlDocument.GetElementsByTagName("link");
@@ -199,6 +226,7 @@ namespace GitUI.CommandsDialogs
             }
         }
 
+        [ItemCanBeNull]
         private static async Task<Stream> DownloadRemoteImageFileAsync(string uri)
         {
             var request = (HttpWebRequest)WebRequest.Create(uri);

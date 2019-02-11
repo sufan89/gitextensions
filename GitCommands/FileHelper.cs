@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 
 namespace GitCommands
 {
@@ -53,23 +54,27 @@ namespace GitCommands
             ".tiff",
         };
 
-        public static bool IsBinaryFile(GitModule module, string fileName)
+        public static bool IsBinaryFileName(GitModule module, string fileName)
         {
-            var t = IsBinaryAccordingToGitAttributes(module, fileName);
-            if (t.HasValue)
-            {
-                return t.Value;
-            }
-
-            return HasMatchingExtension(BinaryExtensions, fileName);
+            return IsBinaryAccordingToGitAttributes(module, fileName)
+                ?? HasMatchingExtension(BinaryExtensions, fileName);
         }
 
         /// <returns>null if no info in .gitattributes (or ambiguous). True if marked as binary, false if marked as text</returns>
         private static bool? IsBinaryAccordingToGitAttributes(GitModule module, string fileName)
         {
-            string[] diffvals = { "set", "astextplain", "ada", "bibtext", "cpp", "csharp", "fortran", "html", "java", "matlab", "objc", "pascal", "perl", "php", "python", "ruby", "tex" };
-            string cmd = "check-attr -z diff text crlf eol -- " + fileName.Quote();
-            string result = module.RunGitCmd(cmd);
+            string[] diffValues = { "set", "astextplain", "ada", "bibtext", "cpp", "csharp", "fortran", "html", "java", "matlab", "objc", "pascal", "perl", "php", "python", "ruby", "tex" };
+            var cmd = new GitArgumentBuilder("check-attr")
+            {
+                "-z",
+                "diff",
+                "text",
+                "crlf",
+                "eol",
+                "--",
+                fileName.Quote()
+            };
+            string result = module.GitExecutable.GetOutput(cmd);
             var lines = result.Split('\n', '\0');
             var attributes = new Dictionary<string, string>();
             for (int i = 0; i < lines.Length - 2; i += 3)
@@ -84,7 +89,7 @@ namespace GitCommands
                     return true;
                 }
 
-                if (diffvals.Contains(diff))
+                if (diffValues.Contains(diff))
                 {
                     return false;
                 }
@@ -128,7 +133,8 @@ namespace GitCommands
         }
 
         #region binary file check
-        public static bool IsBinaryFileAccordingToContent(byte[] content)
+
+        public static bool IsBinaryFileAccordingToContent([CanBeNull] byte[] content)
         {
             // Check for binary file.
             if (content != null && content.Length > 0)
@@ -167,22 +173,17 @@ namespace GitCommands
                     if (c == '\0')
                     {
                         nullCount++;
+                        if (nullCount > 5)
+                        {
+                            return true;
+                        }
                     }
-
-                    if (nullCount > 5)
-                    {
-                        break;
-                    }
-                }
-
-                if (nullCount > 5)
-                {
-                    return true;
                 }
             }
 
             return false;
         }
+
         #endregion
     }
 }

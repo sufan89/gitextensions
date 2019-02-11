@@ -24,6 +24,11 @@ namespace GitUI.BranchTreePanel
 
             internal override void OnSelected()
             {
+                if (Tree.IgnoreSelectionChangedEvent)
+                {
+                    return;
+                }
+
                 base.OnSelected();
                 SelectRevision();
             }
@@ -35,7 +40,7 @@ namespace GitUI.BranchTreePanel
 
             public void CreateBranch()
             {
-                UICommands.StartCreateBranchDialog(TreeViewNode.TreeView, new GitRevision(_tagInfo.Guid));
+                UICommands.StartCreateBranchDialog(TreeViewNode.TreeView, _tagInfo.ObjectId);
             }
 
             public void Delete()
@@ -46,7 +51,7 @@ namespace GitUI.BranchTreePanel
             protected override void ApplyStyle()
             {
                 base.ApplyStyle();
-                TreeViewNode.ImageKey = TreeViewNode.SelectedImageKey = nameof(MsVsImages.Tag_16x);
+                TreeViewNode.ImageKey = TreeViewNode.SelectedImageKey = nameof(Images.TagHorizontal);
             }
 
             public void Checkout()
@@ -59,25 +64,19 @@ namespace GitUI.BranchTreePanel
             }
         }
 
-        private class TagTree : Tree
+        private sealed class TagTree : Tree
         {
             public TagTree(TreeNode treeNode, IGitUICommandsSource uiCommands)
                 : base(treeNode, uiCommands)
             {
-                uiCommands.GitUICommandsChanged += UiCommands_GitUICommandsChanged;
             }
 
-            private void UiCommands_GitUICommandsChanged(object sender, GitUICommandsChangedEventArgs e)
+            public override void RefreshTree()
             {
-                if (TreeViewNode?.TreeView == null)
-                {
-                    return;
-                }
-
-                TreeViewNode.TreeView.SelectedNode = null;
+                ReloadNodes(LoadNodesAsync);
             }
 
-            protected override async Task LoadNodesAsync(CancellationToken token)
+            private async Task LoadNodesAsync(CancellationToken token)
             {
                 await TaskScheduler.Default;
                 token.ThrowIfCancellationRequested();
@@ -87,7 +86,6 @@ namespace GitUI.BranchTreePanel
             private void FillTagTree(IEnumerable<IGitRef> tags, CancellationToken token)
             {
                 var nodes = new Dictionary<string, BaseBranchNode>();
-                var branchFullPaths = new List<string>();
                 foreach (var tag in tags)
                 {
                     token.ThrowIfCancellationRequested();
@@ -98,18 +96,17 @@ namespace GitUI.BranchTreePanel
                     {
                         Nodes.AddNode(parent);
                     }
-
-                    branchFullPaths.Add(branchNode.FullPath);
                 }
             }
 
-            protected override void FillTreeViewNode()
+            protected override void PostFillTreeViewNode(bool firstTime)
             {
-                base.FillTreeViewNode();
+                if (firstTime)
+                {
+                    TreeViewNode.Collapse();
+                }
 
-                TreeViewNode.Text = $@"{Strings.TagsText} ({Nodes.Count})";
-
-                TreeViewNode.Collapse();
+                TreeViewNode.Text = $@"{Strings.Tags} ({Nodes.Count})";
             }
         }
     }

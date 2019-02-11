@@ -20,16 +20,22 @@ namespace GitUI.CommandsDialogs
             new TranslationString("Cannot delete the branch “{0}” which you are currently on.");
 
         private readonly IEnumerable<string> _defaultBranches;
-        private string _currentBranch;
         private readonly HashSet<string> _mergedBranches = new HashSet<string>();
+        private string _currentBranch;
+
+        [Obsolete("For VS designer and translation test only. Do not remove.")]
+        private FormDeleteBranch()
+        {
+            InitializeComponent();
+        }
 
         public FormDeleteBranch(GitUICommands commands, IEnumerable<string> defaultBranches)
             : base(commands)
         {
-            InitializeComponent();
-            Translate();
             _defaultBranches = defaultBranches;
-            this.AdjustForDpiScaling();
+
+            InitializeComponent();
+            InitializeComplete();
         }
 
         private void FormDeleteBranchLoad(object sender, EventArgs e)
@@ -41,7 +47,7 @@ namespace GitUI.CommandsDialogs
                 {
                     _mergedBranches.Add(branch.Trim());
                 }
-                else if (!branch.StartsWith("* ") || (branch.StartsWith("* ") && !DetachedHeadParser.IsDetachedHead(branch.Substring(2))))
+                else if (!branch.StartsWith("* ") || !DetachedHeadParser.IsDetachedHead(branch.Substring(2)))
                 {
                     _currentBranch = branch.Trim('*', ' ');
                 }
@@ -49,7 +55,7 @@ namespace GitUI.CommandsDialogs
 
             if (_defaultBranches != null)
             {
-                Branches.SetSelectedText(_defaultBranches.Join(", "));
+                Branches.SetSelectedText(_defaultBranches.Join(" "));
             }
         }
 

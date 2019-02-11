@@ -47,16 +47,16 @@ namespace GitUI.CommandsDialogs
                 if (_diffSelectedRevision == null)
                 {
                     const string defaultString = "...";
-                    labelDateCaption.Text = string.Format("{0}:", Strings.GetCommitDateText());
+                    labelDateCaption.Text = $"{Strings.CommitDate}:";
                     labelAuthor.Text = defaultString;
                     gbDiffRevision.Text = defaultString;
                     labelMessage.Text = defaultString;
                 }
                 else
                 {
-                    labelDateCaption.Text = string.Format("{0}: {1}", Strings.GetCommitDateText(), _diffSelectedRevision.CommitDate);
+                    labelDateCaption.Text = $"{Strings.CommitDate}: {_diffSelectedRevision.CommitDate}";
                     labelAuthor.Text = _diffSelectedRevision.Author;
-                    gbDiffRevision.Text = GitRevision.ToShortSha(_diffSelectedRevision.Guid);
+                    gbDiffRevision.Text = _diffSelectedRevision.ObjectId.ToShortString();
                     labelMessage.Text = _diffSelectedRevision.Subject;
                 }
             }
@@ -88,19 +88,20 @@ namespace GitUI.CommandsDialogs
             Tar
         }
 
-        /// <summary>
-        /// For VS designer
-        /// </summary>
+        [Obsolete("For VS designer and translation test only. Do not remove.")]
         private FormArchive()
-            : this(null)
         {
+            InitializeComponent();
         }
 
         public FormArchive(GitUICommands commands)
-            : base(true, commands)
+            : base(commands)
         {
             InitializeComponent();
-            Translate();
+            InitializeComplete();
+
+            labelAuthor.Font = new System.Drawing.Font(labelAuthor.Font, System.Drawing.FontStyle.Bold);
+            labelMessage.Font = new System.Drawing.Font(labelMessage.Font, System.Drawing.FontStyle.Bold);
         }
 
         private void FormArchive_Load(object sender, EventArgs e)
@@ -162,7 +163,7 @@ namespace GitUI.CommandsDialogs
             else if (checkboxRevisionFilter.Checked)
             {
                 // 1. get all changed (and not deleted files) from selected to current revision
-                var files = UICommands.Module.GetDiffFiles(DiffSelectedRevision.Guid, SelectedRevision.Guid, SelectedRevision.ParentGuids.FirstOrDefault()).Where(f => !f.IsDeleted);
+                var files = UICommands.Module.GetDiffFiles(DiffSelectedRevision.Guid, SelectedRevision.Guid, SelectedRevision.ParentIds.FirstOrDefault()?.ToString()).Where(f => !f.IsDeleted);
 
                 // 2. wrap file names with ""
                 // 3. join together with space as separator

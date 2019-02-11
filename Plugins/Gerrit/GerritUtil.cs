@@ -24,7 +24,14 @@ namespace Gerrit
 
         public static Uri GetFetchUrl(IGitModule module, string remote)
         {
-            string remotes = module.RunGitCmd("remote show -n \"" + remote + "\"");
+            var args = new GitArgumentBuilder("remote")
+            {
+                "show",
+                "-n",
+                remote.QuoteNE()
+            };
+
+            string remotes = module.GitExecutable.GetOutput(args);
 
             string fetchUrlLine = remotes.Split('\n').Select(p => p.Trim()).First(p => p.StartsWith("Push"));
 
@@ -60,11 +67,9 @@ namespace Gerrit
 
             StartAgent(owner, module, remote);
 
-            var sshCmd = SshPathLocatorInstance.Find(AppSettings.GitBinDir);
-            if (GitCommandHelpers.Plink())
-            {
-                sshCmd = AppSettings.Plink;
-            }
+            var sshCmd = GitCommandHelpers.Plink()
+                ? AppSettings.Plink
+                : SshPathLocatorInstance.Find(AppSettings.GitBinDir);
 
             if (string.IsNullOrEmpty(sshCmd))
             {
@@ -100,11 +105,8 @@ namespace Gerrit
             sb.Append(command);
             sb.Append("\"");
 
-            return await module.RunCmdAsync(
-                sshCmd,
-                sb.ToString(),
-                encoding: null,
-                stdIn).ConfigureAwait(false);
+            return await new Executable(sshCmd)
+                .GetOutputAsync(sb.ToString(), stdIn).ConfigureAwait(false);
         }
 
         public static void StartAgent([NotNull] IWin32Window owner, [NotNull] IGitModule module, [NotNull] string remote)

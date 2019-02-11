@@ -42,9 +42,10 @@ namespace GitUI.CommandsDialogs.SettingsDialog
 
         public static T Create<[MeansImplicitUse] T>(ISettingsPageHost pageHost) where T : SettingsPageBase, new()
         {
-            T result = new T();
+            var result = new T();
 
             result.AdjustForDpiScaling();
+            result.EnableRemoveWordHotkey();
 
             result.Init(pageHost);
 
@@ -74,11 +75,17 @@ namespace GitUI.CommandsDialogs.SettingsDialog
         /// </summary>
         protected bool IsLoadingSettings { get; private set; }
 
+        /// <summary>
+        /// Indicates that settings have been loaded to the page.
+        /// </summary>
+        protected bool IsSettingsLoaded { get; private set; }
+
         public void LoadSettings()
         {
             IsLoadingSettings = true;
             SettingsToPage();
             IsLoadingSettings = false;
+            IsSettingsLoaded = true;
         }
 
         public void SaveSettings()

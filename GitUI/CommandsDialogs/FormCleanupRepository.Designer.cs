@@ -32,7 +32,7 @@
             this.Cleanup = new System.Windows.Forms.Button();
             this.Cancel = new System.Windows.Forms.Button();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.RemoveIngnored = new System.Windows.Forms.RadioButton();
+            this.RemoveIgnored = new System.Windows.Forms.RadioButton();
             this.RemoveNonIgnored = new System.Windows.Forms.RadioButton();
             this.RemoveAll = new System.Windows.Forms.RadioButton();
             this.RemoveDirectories = new System.Windows.Forms.CheckBox();
@@ -47,7 +47,7 @@
             // Preview
             //
             this.Preview.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.Preview.Image = global::GitUI.Properties.Resources.IconPreview;
+            this.Preview.Image = global::GitUI.Properties.Images.Preview;
             this.Preview.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.Preview.Location = new System.Drawing.Point(50, 278);
             this.Preview.Name = "Preview";
@@ -60,7 +60,7 @@
             // Cleanup
             //
             this.Cleanup.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.Cleanup.Image = global::GitUI.Properties.Resources.IconCleanupRepo;
+            this.Cleanup.Image = global::GitUI.Properties.Images.CleanupRepo;
             this.Cleanup.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.Cleanup.Location = new System.Drawing.Point(176, 278);
             this.Cleanup.Name = "Cleanup";
@@ -86,7 +86,7 @@
             //
             this.groupBox1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.groupBox1.Controls.Add(this.RemoveIngnored);
+            this.groupBox1.Controls.Add(this.RemoveIgnored);
             this.groupBox1.Controls.Add(this.RemoveNonIgnored);
             this.groupBox1.Controls.Add(this.RemoveAll);
             this.groupBox1.Location = new System.Drawing.Point(12, 12);
@@ -96,15 +96,15 @@
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Remove untracked files from working directory";
             //
-            // RemoveIngnored
+            // RemoveIgnored
             //
-            this.RemoveIngnored.AutoSize = true;
-            this.RemoveIngnored.Location = new System.Drawing.Point(7, 67);
-            this.RemoveIngnored.Name = "RemoveIngnored";
-            this.RemoveIngnored.Size = new System.Drawing.Size(218, 19);
-            this.RemoveIngnored.TabIndex = 2;
-            this.RemoveIngnored.Text = "Remove only ignored untracked files";
-            this.RemoveIngnored.UseVisualStyleBackColor = true;
+            this.RemoveIgnored.AutoSize = true;
+            this.RemoveIgnored.Location = new System.Drawing.Point(7, 67);
+            this.RemoveIgnored.Name = "RemoveIgnored";
+            this.RemoveIgnored.Size = new System.Drawing.Size(218, 19);
+            this.RemoveIgnored.TabIndex = 2;
+            this.RemoveIgnored.Text = "Remove only ignored untracked files";
+            this.RemoveIgnored.UseVisualStyleBackColor = true;
             //
             // RemoveNonIgnored
             //
@@ -229,7 +229,7 @@
         private System.Windows.Forms.Button Cleanup;
         private System.Windows.Forms.Button Cancel;
         private System.Windows.Forms.GroupBox groupBox1;
-        private System.Windows.Forms.RadioButton RemoveIngnored;
+        private System.Windows.Forms.RadioButton RemoveIgnored;
         private System.Windows.Forms.RadioButton RemoveNonIgnored;
         private System.Windows.Forms.RadioButton RemoveAll;
         private System.Windows.Forms.CheckBox RemoveDirectories;

@@ -1,4 +1,6 @@
-﻿namespace GitUI.CommandsDialogs
+﻿using System.Windows.Forms;
+
+namespace GitUI.CommandsDialogs
 {
     partial class FormDiff
     {
@@ -36,6 +38,8 @@
             this.settingsLayoutPanel = new System.Windows.Forms.TableLayoutPanel();
             this.btnSwap = new System.Windows.Forms.Button();
             this.ckCompareToMergeBase = new System.Windows.Forms.CheckBox();
+            this.btnCompareDirectoriesWithDiffTool = new System.Windows.Forms.Button();
+            this.diffOptionsPanel = new System.Windows.Forms.FlowLayoutPanel();
             this.baseCommitGroup = new System.Windows.Forms.GroupBox();
             this.baseCommitPanel = new System.Windows.Forms.FlowLayoutPanel();
             this.lblBaseCommit = new System.Windows.Forms.Label();
@@ -136,7 +140,7 @@
             this.settingsLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.settingsLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
             this.settingsLayoutPanel.Controls.Add(this.btnSwap, 1, 0);
-            this.settingsLayoutPanel.Controls.Add(this.ckCompareToMergeBase, 0, 1);
+            this.settingsLayoutPanel.Controls.Add(this.diffOptionsPanel, 0, 1);
             this.settingsLayoutPanel.Controls.Add(this.baseCommitGroup, 0, 0);
             this.settingsLayoutPanel.Controls.Add(this.headCommitGroup, 2, 0);
             this.settingsLayoutPanel.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -153,7 +157,7 @@
             this.btnSwap.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.btnSwap.AutoSize = true;
             this.btnSwap.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.btnSwap.Image = global::GitUI.Properties.Resources.Renamed;
+            this.btnSwap.Image = global::GitUI.Properties.Images.Renamed;
             this.btnSwap.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.btnSwap.Location = new System.Drawing.Point(507, 20);
             this.btnSwap.Margin = new System.Windows.Forms.Padding(10, 15, 10, 0);
@@ -166,14 +170,39 @@
             // 
             // ckCompareToMergeBase
             // 
+            this.ckCompareToMergeBase.Anchor = AnchorStyles.Left;
             this.ckCompareToMergeBase.AutoSize = true;
-            this.ckCompareToMergeBase.Location = new System.Drawing.Point(3, 51);
             this.ckCompareToMergeBase.Name = "ckCompareToMergeBase";
-            this.ckCompareToMergeBase.Size = new System.Drawing.Size(141, 17);
-            this.ckCompareToMergeBase.TabIndex = 8;
-            this.ckCompareToMergeBase.Text = "Compare to merge base";
+            this.ckCompareToMergeBase.TabIndex = 9;
+            this.ckCompareToMergeBase.Text = "Compare to merge &base";
+            this.ckCompareToMergeBase.UseMnemonic = true;
             this.ckCompareToMergeBase.UseVisualStyleBackColor = true;
             this.ckCompareToMergeBase.CheckedChanged += new System.EventHandler(this.ckCompareToMergeBase_CheckedChanged);
+            // 
+            // btnCompareDirectoriesWithDiffTool
+            // 
+            this.btnCompareDirectoriesWithDiffTool.Anchor = AnchorStyles.Left;
+            this.btnCompareDirectoriesWithDiffTool.AutoSize = true;
+            this.btnCompareDirectoriesWithDiffTool.Name = "btnCompareDirectoriesWithDiffTool";
+            this.btnCompareDirectoriesWithDiffTool.Margin = new System.Windows.Forms.Padding(0);
+            this.btnCompareDirectoriesWithDiffTool.Size = new System.Drawing.Size(141, 17);
+            this.btnCompareDirectoriesWithDiffTool.TabIndex = 10;
+            this.btnCompareDirectoriesWithDiffTool.Text = "Open diff using &directory diff tool";
+            this.btnCompareDirectoriesWithDiffTool.UseMnemonic = true;
+            this.btnCompareDirectoriesWithDiffTool.UseVisualStyleBackColor = true;
+            this.btnCompareDirectoriesWithDiffTool.Click += new System.EventHandler(this.btnCompareDirectoriesWithDiffTool_Clicked);
+            this.btnCompareDirectoriesWithDiffTool.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            // 
+            // diffOptionsPanel
+            // 
+            this.diffOptionsPanel.AutoSize = true;
+            this.diffOptionsPanel.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.diffOptionsPanel.Controls.Add(this.ckCompareToMergeBase);
+            this.diffOptionsPanel.Controls.Add(this.btnCompareDirectoriesWithDiffTool);
+            this.diffOptionsPanel.Margin = new System.Windows.Forms.Padding(3);
+            this.diffOptionsPanel.Name = "diffOptionsPanel";
+            this.diffOptionsPanel.Size = new System.Drawing.Size(491, 23);
+            this.diffOptionsPanel.TabIndex = 14;
             // 
             // baseCommitGroup
             // 
@@ -219,7 +248,7 @@
             this.btnAnotherBaseBranch.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.btnAnotherBaseBranch.AutoSize = true;
             this.btnAnotherBaseBranch.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.btnAnotherBaseBranch.Image = global::GitUI.Properties.Resources.IconBranchCheckout;
+            this.btnAnotherBaseBranch.Image = global::GitUI.Properties.Images.BranchCheckout;
             this.btnAnotherBaseBranch.Location = new System.Drawing.Point(209, 3);
             this.btnAnotherBaseBranch.Name = "btnAnotherBaseBranch";
             this.btnAnotherBaseBranch.Size = new System.Drawing.Size(22, 22);
@@ -233,11 +262,11 @@
             this.btnAnotherBaseCommit.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.btnAnotherBaseCommit.AutoSize = true;
             this.btnAnotherBaseCommit.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.btnAnotherBaseCommit.Image = global::GitUI.Properties.Resources.IconSelectRevision;
+            this.btnAnotherBaseCommit.Image = global::GitUI.Properties.Images.SelectRevision;
             this.btnAnotherBaseCommit.Location = new System.Drawing.Point(237, 3);
             this.btnAnotherBaseCommit.Name = "btnAnotherBaseCommit";
             this.btnAnotherBaseCommit.Size = new System.Drawing.Size(22, 22);
-            this.btnAnotherBaseCommit.TabIndex = 9;
+            this.btnAnotherBaseCommit.TabIndex = 10;
             this.btnAnotherBaseCommit.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageBeforeText;
             this.btnAnotherBaseCommit.UseVisualStyleBackColor = true;
             this.btnAnotherBaseCommit.Click += new System.EventHandler(this.btnAnotherCommit_Click);
@@ -286,7 +315,7 @@
             this.btnAnotherHeadBranch.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.btnAnotherHeadBranch.AutoSize = true;
             this.btnAnotherHeadBranch.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.btnAnotherHeadBranch.Image = global::GitUI.Properties.Resources.IconBranchCheckout;
+            this.btnAnotherHeadBranch.Image = global::GitUI.Properties.Images.BranchCheckout;
             this.btnAnotherHeadBranch.Location = new System.Drawing.Point(209, 3);
             this.btnAnotherHeadBranch.Name = "btnAnotherHeadBranch";
             this.btnAnotherHeadBranch.Size = new System.Drawing.Size(22, 22);
@@ -300,7 +329,7 @@
             this.btnAnotherHeadCommit.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.btnAnotherHeadCommit.AutoSize = true;
             this.btnAnotherHeadCommit.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.btnAnotherHeadCommit.Image = global::GitUI.Properties.Resources.IconSelectRevision;
+            this.btnAnotherHeadCommit.Image = global::GitUI.Properties.Images.SelectRevision;
             this.btnAnotherHeadCommit.Location = new System.Drawing.Point(237, 3);
             this.btnAnotherHeadCommit.Name = "btnAnotherHeadCommit";
             this.btnAnotherHeadCommit.Size = new System.Drawing.Size(22, 22);
@@ -338,7 +367,7 @@
             this.selectedToLocalToolStripMenuItem,
             this.firstParentToLocalToolStripMenuItem,
             this.selectedParentToLocalToolStripMenuItem});
-            this.openWithDifftoolToolStripMenuItem.Image = global::GitUI.Properties.Resources.IconDiffTool;
+            this.openWithDifftoolToolStripMenuItem.Image = global::GitUI.Properties.Images.Diff;
             this.openWithDifftoolToolStripMenuItem.Name = "openWithDifftoolToolStripMenuItem";
             this.openWithDifftoolToolStripMenuItem.Size = new System.Drawing.Size(210, 22);
             this.openWithDifftoolToolStripMenuItem.Text = "Open with difftool";
@@ -387,7 +416,7 @@
             // 
             // copyFilenameToClipboardToolStripMenuItem1
             // 
-            this.copyFilenameToClipboardToolStripMenuItem1.Image = global::GitUI.Properties.Resources.IconCopyToClipboard;
+            this.copyFilenameToClipboardToolStripMenuItem1.Image = global::GitUI.Properties.Images.CopyToClipboard;
             this.copyFilenameToClipboardToolStripMenuItem1.Name = "copyFilenameToClipboardToolStripMenuItem1";
             this.copyFilenameToClipboardToolStripMenuItem1.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.C)));
             this.copyFilenameToClipboardToolStripMenuItem1.Size = new System.Drawing.Size(210, 22);
@@ -396,10 +425,10 @@
             // 
             // openContainingFolderToolStripMenuItem
             // 
-            this.openContainingFolderToolStripMenuItem.Image = global::GitUI.Properties.Resources.IconBrowseFileExplorer;
+            this.openContainingFolderToolStripMenuItem.Image = global::GitUI.Properties.Images.BrowseFileExplorer;
             this.openContainingFolderToolStripMenuItem.Name = "openContainingFolderToolStripMenuItem";
             this.openContainingFolderToolStripMenuItem.Size = new System.Drawing.Size(210, 22);
-            this.openContainingFolderToolStripMenuItem.Text = "Open containing folder(s)";
+            this.openContainingFolderToolStripMenuItem.Text = "Show in folder";
             this.openContainingFolderToolStripMenuItem.Click += new System.EventHandler(this.openContainingFolderToolStripMenuItem_Click);
             // 
             // toolStripSeparator33
@@ -409,15 +438,15 @@
             // 
             // fileHistoryDiffToolstripMenuItem
             // 
-            this.fileHistoryDiffToolstripMenuItem.Image = global::GitUI.Properties.Resources.IconFileHistory;
+            this.fileHistoryDiffToolstripMenuItem.Image = global::GitUI.Properties.Images.FileHistory;
             this.fileHistoryDiffToolstripMenuItem.Name = "fileHistoryDiffToolstripMenuItem";
             this.fileHistoryDiffToolstripMenuItem.Size = new System.Drawing.Size(210, 22);
             this.fileHistoryDiffToolstripMenuItem.Text = "File history";
-            this.fileHistoryDiffToolstripMenuItem.Click += new System.EventHandler(this.fileHistoryDiffToolstripMenuItem_Click);
+            this.fileHistoryDiffToolstripMenuItem.Click += new System.EventHandler(this.fileHistoryDiffToolStripMenuItem_Click);
             // 
             // blameToolStripMenuItem
             // 
-            this.blameToolStripMenuItem.Image = global::GitUI.Properties.Resources.IconBlame;
+            this.blameToolStripMenuItem.Image = global::GitUI.Properties.Images.Blame;
             this.blameToolStripMenuItem.Name = "blameToolStripMenuItem";
             this.blameToolStripMenuItem.Size = new System.Drawing.Size(210, 22);
             this.blameToolStripMenuItem.Text = "Blame";
@@ -425,7 +454,7 @@
             // 
             // findInDiffToolStripMenuItem
             // 
-            this.findInDiffToolStripMenuItem.Image = global::GitUI.Properties.Resources.IconFind;
+            this.findInDiffToolStripMenuItem.Image = global::GitUI.Properties.Images.Preview;
             this.findInDiffToolStripMenuItem.Name = "findInDiffToolStripMenuItem";
             this.findInDiffToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.F)));
             this.findInDiffToolStripMenuItem.Size = new System.Drawing.Size(210, 22);
@@ -449,6 +478,8 @@
             this.splitContainer1.ResumeLayout(false);
             this.settingsLayoutPanel.ResumeLayout(false);
             this.settingsLayoutPanel.PerformLayout();
+            this.diffOptionsPanel.ResumeLayout(false);
+            this.diffOptionsPanel.PerformLayout();
             this.baseCommitGroup.ResumeLayout(false);
             this.baseCommitGroup.PerformLayout();
             this.baseCommitPanel.ResumeLayout(false);
@@ -493,8 +524,10 @@
         private System.Windows.Forms.FlowLayoutPanel headCommitPanel;
         private System.Windows.Forms.Button btnAnotherHeadBranch;
         private System.Windows.Forms.Button btnAnotherHeadCommit;
+        private System.Windows.Forms.Button btnCompareDirectoriesWithDiffTool;
         private System.Windows.Forms.CheckBox ckCompareToMergeBase;
         private System.Windows.Forms.GroupBox baseCommitGroup;
         private System.Windows.Forms.GroupBox headCommitGroup;
+        private System.Windows.Forms.FlowLayoutPanel diffOptionsPanel;
     }
 }

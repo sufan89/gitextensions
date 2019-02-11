@@ -76,10 +76,7 @@ namespace GitCommandsTests
 
                     Assert.True(StringPool.EqualsAtIndex(s, index, s.Substring(index, length)), format, index, length);
 
-                    if (length < s.Length)
-                    {
-                        Assert.False(StringPool.EqualsAtIndex(s, index, s.Substring(index, length) + 'Z'), format, index, length);
-                    }
+                    Assert.False(StringPool.EqualsAtIndex(s, index, s.Substring(index, length) + 'Z'), format, index, length);
 
                     if (index > 0 && length > 0)
                     {
@@ -135,7 +132,7 @@ namespace GitCommandsTests
         Average clashing bucket length 1.036
         */
 
-        [Test]
+        [Test, Ignore("For hash analysis only, has no assertions")]
         public void AnalyzeHashFunctionDistribution()
         {
             var seenHashes = new HashSet<int>();

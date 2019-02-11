@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using GitCommands;
@@ -12,7 +13,12 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
         {
             InitializeComponent();
             Text = "General";
-            Translate();
+            InitializeComplete();
+
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime || GitModuleForm.IsUnitTestActive)
+            {
+                return;
+            }
 
             ThreadHelper.JoinableTaskFactory.Run(async () =>
             {
@@ -36,19 +42,27 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             tlpnlEmailSettings.AdjustWidthToSize(0, lblCommitsLimit, lblDefaultCloneDestination);
         }
 
+        private void SetSubmoduleStatus()
+        {
+            chkShowSubmoduleStatusInBrowse.Enabled = chkShowGitStatusInToolbar.Checked || chkShowGitStatusForArtificialCommits.Checked;
+            chkShowSubmoduleStatusInBrowse.Checked = chkShowSubmoduleStatusInBrowse.Enabled && chkShowSubmoduleStatusInBrowse.Checked;
+        }
+
         protected override void SettingsToPage()
         {
             chkCheckForUncommittedChangesInCheckoutBranch.Checked = AppSettings.CheckForUncommittedChangesInCheckoutBranch;
             chkStartWithRecentWorkingDir.Checked = AppSettings.StartWithRecentWorkingDir;
-            chkPlaySpecialStartupSound.Checked = AppSettings.PlaySpecialStartupSound;
             chkUsePatienceDiffAlgorithm.Checked = AppSettings.UsePatienceDiffAlgorithm;
             RevisionGridQuickSearchTimeout.Value = AppSettings.RevisionGridQuickSearchTimeout;
             chkFollowRenamesInFileHistory.Checked = AppSettings.FollowRenamesInFileHistory;
             chkStashUntrackedFiles.Checked = AppSettings.IncludeUntrackedFilesInAutoStash;
             chkShowCurrentChangesInRevisionGraph.Checked = AppSettings.RevisionGraphShowWorkingDirChanges;
             chkShowStashCountInBrowseWindow.Checked = AppSettings.ShowStashCount;
+            chkShowAheadBehindDataInBrowseWindow.Checked = AppSettings.ShowAheadBehindData;
+            chkShowAheadBehindDataInBrowseWindow.Enabled = GitVersion.Current.SupportAheadBehindData;
             chkShowGitStatusInToolbar.Checked = AppSettings.ShowGitStatusInBrowseToolbar;
             chkShowGitStatusForArtificialCommits.Checked = AppSettings.ShowGitStatusForArtificialCommits;
+            chkShowSubmoduleStatusInBrowse.Checked = AppSettings.ShowSubmoduleStatus;
             SmtpServer.Text = AppSettings.SmtpServer;
             SmtpServerPort.Text = AppSettings.SmtpPort.ToString();
             chkUseSSL.Checked = AppSettings.SmtpUseSsl;
@@ -58,13 +72,13 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             chkUseFastChecks.Checked = AppSettings.UseFastChecks;
             cbDefaultCloneDestination.Text = AppSettings.DefaultCloneDestinationPath;
             chkFollowRenamesInFileHistoryExact.Checked = AppSettings.FollowRenamesInFileHistoryExactOnly;
+            SetSubmoduleStatus();
         }
 
         protected override void PageToSettings()
         {
             AppSettings.CheckForUncommittedChangesInCheckoutBranch = chkCheckForUncommittedChangesInCheckoutBranch.Checked;
             AppSettings.StartWithRecentWorkingDir = chkStartWithRecentWorkingDir.Checked;
-            AppSettings.PlaySpecialStartupSound = chkPlaySpecialStartupSound.Checked;
             AppSettings.UsePatienceDiffAlgorithm = chkUsePatienceDiffAlgorithm.Checked;
             AppSettings.IncludeUntrackedFilesInAutoStash = chkStashUntrackedFiles.Checked;
             AppSettings.FollowRenamesInFileHistory = chkFollowRenamesInFileHistory.Checked;
@@ -84,6 +98,9 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             AppSettings.RevisionGridQuickSearchTimeout = (int)RevisionGridQuickSearchTimeout.Value;
             AppSettings.RevisionGraphShowWorkingDirChanges = chkShowCurrentChangesInRevisionGraph.Checked;
             AppSettings.ShowStashCount = chkShowStashCountInBrowseWindow.Checked;
+            AppSettings.ShowAheadBehindData = chkShowAheadBehindDataInBrowseWindow.Checked;
+            AppSettings.ShowSubmoduleStatus = chkShowSubmoduleStatusInBrowse.Checked;
+
             AppSettings.DefaultCloneDestinationPath = cbDefaultCloneDestination.Text;
             AppSettings.FollowRenamesInFileHistoryExactOnly = chkFollowRenamesInFileHistoryExact.Checked;
         }
@@ -133,6 +150,11 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
             {
                 cbDefaultCloneDestination.Text = userSelectedPath;
             }
+        }
+
+        private void ShowGitStatus_CheckedChanged(object sender, System.EventArgs e)
+        {
+            SetSubmoduleStatus();
         }
     }
 }

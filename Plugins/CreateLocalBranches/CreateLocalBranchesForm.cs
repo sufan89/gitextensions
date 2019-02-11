@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Windows.Forms;
+using GitCommands;
 using GitUIPluginInterfaces;
 
 namespace CreateLocalBranches
@@ -11,14 +12,15 @@ namespace CreateLocalBranches
         public CreateLocalBranchesForm(GitUIEventArgs gitUiCommands)
         {
             InitializeComponent();
-            Translate();
+            InitializeComplete();
 
             _gitUiCommands = gitUiCommands;
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
-            string[] references = _gitUiCommands.GitModule.RunGitCmd("branch -a")
+            var args = new GitArgumentBuilder("branch") { "-a" };
+            string[] references = _gitUiCommands.GitModule.GitExecutable.GetOutput(args)
                 .Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
             if (references.Length == 0)
@@ -36,7 +38,13 @@ namespace CreateLocalBranches
 
                     if (branchName.StartsWith("remotes/" + _NO_TRANSLATE_Remote.Text + "/"))
                     {
-                        _gitUiCommands.GitModule.RunGitCmd(string.Concat("branch --track ", branchName.Replace("remotes/" + _NO_TRANSLATE_Remote.Text + "/", ""), " ", branchName));
+                        args = new GitArgumentBuilder("branch")
+                        {
+                            "--track",
+                            branchName.Replace($"remotes/{_NO_TRANSLATE_Remote.Text}/", ""),
+                            branchName
+                        };
+                        _gitUiCommands.GitModule.GitExecutable.GetOutput(args);
                     }
                 }
                 catch

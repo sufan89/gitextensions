@@ -21,6 +21,8 @@ namespace GitUI.SpellChecker
     [DefaultEvent("TextChanged")]
     public partial class EditNetSpell : GitModuleControl
     {
+        public event EventHandler TextAssigned;
+
         private readonly TranslationString _cutMenuItemText = new TranslationString("Cut");
         private readonly TranslationString _copyMenuItemText = new TranslationString("Copy");
         private readonly TranslationString _pasteMenuItemText = new TranslationString("Paste");
@@ -32,6 +34,7 @@ namespace GitUI.SpellChecker
         private readonly TranslationString _removeWordText = new TranslationString("Remove word");
         private readonly TranslationString _dictionaryText = new TranslationString("Dictionary");
         private readonly TranslationString _markIllFormedLinesText = new TranslationString("Mark ill formed lines");
+        private readonly TranslationString _autoCompletionText = new TranslationString("Provide auto completion");
 
         private SpellCheckEditControl _customUnderlines;
         private Spelling _spelling;
@@ -41,7 +44,7 @@ namespace GitUI.SpellChecker
         private readonly List<IAutoCompleteProvider> _autoCompleteProviders = new List<IAutoCompleteProvider>();
         private AsyncLazy<IEnumerable<AutoCompleteWord>> _autoCompleteListTask;
         private bool _autoCompleteWasUserActivated;
-        private bool _disableAutoCompleteTriggerOnTextUpdate;
+        private bool _disableAutoCompleteTriggerOnTextUpdate = true; // only popup on key press
         private readonly Dictionary<Keys, string> _keysToSendToAutoComplete = new Dictionary<Keys, string>
                                                                      {
                                                                              { Keys.Down, "{DOWN}" },
@@ -56,13 +59,12 @@ namespace GitUI.SpellChecker
 
         public Font TextBoxFont { get; set; }
 
-        public EventHandler TextAssigned;
         public bool IsUndoInProgress;
 
         public EditNetSpell()
         {
             InitializeComponent();
-            Translate();
+            InitializeComplete();
 
             MistakeFont = new Font(TextBox.Font, FontStyle.Underline);
             TextBoxFont = TextBox.Font;
@@ -194,9 +196,7 @@ namespace GitUI.SpellChecker
             set => TextBox.SelectedText = value;
         }
 
-        protected RepoDistSettings Settings => IsUICommandsInitialized ?
-            Module.EffectiveSettings :
-            AppSettings.SettingsContainer;
+        protected RepoDistSettings Settings => Module.EffectiveSettings ?? AppSettings.SettingsContainer;
 
         public void SelectAll()
         {
@@ -210,6 +210,7 @@ namespace GitUI.SpellChecker
             _customUnderlines = new SpellCheckEditControl(TextBox);
             TextBox.SelectionChanged += TextBox_SelectionChanged;
             TextBox.TextChanged += TextBoxTextChanged;
+            TextBox.DoubleClick += TextBox_DoubleClick;
 
             EnabledChanged += EditNetSpellEnabledChanged;
 
@@ -223,19 +224,7 @@ namespace GitUI.SpellChecker
                 IgnoreWordsWithDigits = true
             };
 
-            if (AppSettings.ProvideAutocompletion)
-            {
-                InitializeAutoCompleteWordsTask();
-
-                ThreadHelper.JoinableTaskFactory.RunAsync(
-                    async () =>
-                    {
-                        var words = await _autoCompleteListTask.GetValueAsync();
-                        await this.SwitchToMainThreadAsync(_autoCompleteCancellationTokenSource.Token);
-
-                        _spelling.AddAutoCompleteWords(words.Select(x => x.Word));
-                    });
-            }
+            ToggleAutoCompletion();
 
             //
             // spelling
@@ -250,6 +239,105 @@ namespace GitUI.SpellChecker
             LoadDictionary();
 
             SpellCheckTimer.Enabled = true;
+        }
+
+        private ToolStripMenuItem AddContextMenuItem(string text, EventHandler eventHandler)
+        {
+            var menuItem = new ToolStripMenuItem(text, null, eventHandler);
+            SpellCheckContextMenu.Items.Add(menuItem);
+            return menuItem;
+        }
+
+        private void AddContextMenuSeparator()
+        {
+            SpellCheckContextMenu.Items.Add(new ToolStripSeparator());
+        }
+
+        private void AddDictionaries()
+        {
+            try
+            {
+                var dictionaryToolStripMenuItem = new ToolStripMenuItem(_dictionaryText.Text);
+                SpellCheckContextMenu.Items.Add(dictionaryToolStripMenuItem);
+
+                var toolStripDropDown = new ContextMenuStrip();
+
+                var noDicToolStripMenuItem = new ToolStripMenuItem("None");
+                noDicToolStripMenuItem.Click += DicToolStripMenuItemClick;
+                if (Settings.Dictionary == "None")
+                {
+                    noDicToolStripMenuItem.Checked = true;
+                }
+
+                toolStripDropDown.Items.Add(noDicToolStripMenuItem);
+
+                foreach (var fileName in Directory.GetFiles(AppSettings.GetDictionaryDir(), "*.dic", SearchOption.TopDirectoryOnly))
+                {
+                    var file = new FileInfo(fileName);
+
+                    var dic = file.Name.Replace(".dic", "");
+
+                    var dicToolStripMenuItem = new ToolStripMenuItem(dic);
+                    dicToolStripMenuItem.Click += DicToolStripMenuItemClick;
+
+                    if (Settings.Dictionary == dic)
+                    {
+                        dicToolStripMenuItem.Checked = true;
+                    }
+
+                    toolStripDropDown.Items.Add(dicToolStripMenuItem);
+                }
+
+                dictionaryToolStripMenuItem.DropDown = toolStripDropDown;
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine(ex);
+            }
+        }
+
+        private void AddWordSuggestions(int pos)
+        {
+            if (!AppSettings.ProvideAutocompletion)
+            {
+                return;
+            }
+
+            try
+            {
+                _spelling.Text = TextBox.Text;
+                _spelling.WordIndex = _spelling.GetWordIndexFromTextIndex(pos);
+
+                if (_spelling.CurrentWord.Length == 0 || _spelling.TestWord())
+                {
+                    return;
+                }
+
+                _spelling.ShowDialog = false;
+                _spelling.MaxSuggestions = 5;
+
+                // generate suggestions
+                _spelling.Suggest();
+
+                foreach (var suggestion in _spelling.Suggestions)
+                {
+                    var si = AddContextMenuItem(suggestion, SuggestionToolStripItemClick);
+                    si.Font = new Font(si.Font, FontStyle.Bold);
+                }
+
+                AddContextMenuItem(_addToDictionaryText.Text, AddToDictionaryClick);
+                AddContextMenuItem(_ignoreWordText.Text, IgnoreWordClick);
+                AddContextMenuItem(_removeWordText.Text, RemoveWordClick);
+
+                if (_spelling.Suggestions.Count > 0)
+                {
+                    AddContextMenuSeparator();
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine(ex);
+            }
         }
 
         private void LoadDictionary()
@@ -272,6 +360,27 @@ namespace GitUI.SpellChecker
             }
 
             _spelling.Dictionary = _wordDictionary;
+        }
+
+        private void ToggleAutoCompletion()
+        {
+            if (!AppSettings.ProvideAutocompletion)
+            {
+                CloseAutoComplete();
+                CancelAutoComplete();
+                return;
+            }
+
+            InitializeAutoCompleteWordsTask();
+
+            ThreadHelper.JoinableTaskFactory.RunAsync(
+                async () =>
+                {
+                    var words = await _autoCompleteListTask.GetValueAsync();
+                    await this.SwitchToMainThreadAsync(_autoCompleteCancellationTokenSource.Token);
+
+                    _spelling.AddAutoCompleteWords(words.Select(x => x.Word));
+                });
         }
 
         private void SpellingMisspelledWord(object sender, SpellingEventArgs e)
@@ -385,142 +494,47 @@ namespace GitUI.SpellChecker
             TextBox.Select(start, length);
         }
 
-        private ToolStripMenuItem AddContextMenuItem(string text, EventHandler eventHandler)
-        {
-            ToolStripMenuItem menuItem = new ToolStripMenuItem(text, null, eventHandler);
-            SpellCheckContextMenu.Items.Add(menuItem);
-            return menuItem;
-        }
-
-        private void AddContextMenuSeparator()
-        {
-            SpellCheckContextMenu.Items.Add(new ToolStripSeparator());
-        }
-
         private void SpellCheckContextMenuOpening(object sender, CancelEventArgs e)
         {
             TextBox.Focus();
+            var pos = TextBox.GetCharIndexFromPosition(TextBox.PointToClient(MousePosition));
+            if (pos < 0)
+            {
+                e.Cancel = true;
+                return;
+            }
 
             SpellCheckContextMenu.Items.Clear();
 
-            try
-            {
-                var pos = TextBox.GetCharIndexFromPosition(TextBox.PointToClient(MousePosition));
-
-                if (pos < 0)
-                {
-                    e.Cancel = true;
-                    return;
-                }
-
-                _spelling.Text = TextBox.Text;
-                _spelling.WordIndex = _spelling.GetWordIndexFromTextIndex(pos);
-
-                if (_spelling.CurrentWord.Length != 0 && !_spelling.TestWord())
-                {
-                    _spelling.ShowDialog = false;
-                    _spelling.MaxSuggestions = 5;
-
-                    // generate suggestions
-                    _spelling.Suggest();
-
-                    foreach (var suggestion in _spelling.Suggestions)
-                    {
-                        var si = AddContextMenuItem(suggestion, SuggestionToolStripItemClick);
-                        si.Font = new Font(si.Font, FontStyle.Bold);
-                    }
-
-                    AddContextMenuItem(_addToDictionaryText.Text, AddToDictionaryClick)
-                        .Enabled = _spelling.CurrentWord.Length > 0;
-                    AddContextMenuItem(_ignoreWordText.Text, IgnoreWordClick)
-                        .Enabled = _spelling.CurrentWord.Length > 0;
-                    AddContextMenuItem(_removeWordText.Text, RemoveWordClick)
-                        .Enabled = _spelling.CurrentWord.Length > 0;
-
-                    if (_spelling.Suggestions.Count > 0)
-                    {
-                        AddContextMenuSeparator();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine(ex);
-            }
-
-            AddContextMenuItem(_cutMenuItemText.Text, CutMenuItemClick)
-                .Enabled = TextBox.SelectedText.Length > 0;
-            AddContextMenuItem(_copyMenuItemText.Text, CopyMenuItemdClick)
-                .Enabled = TextBox.SelectedText.Length > 0;
-            AddContextMenuItem(_pasteMenuItemText.Text, PasteMenuItemClick)
-                .Enabled = Clipboard.ContainsText();
-            AddContextMenuItem(_deleteMenuItemText.Text, DeleteMenuItemClick)
-                .Enabled = TextBox.SelectedText.Length > 0;
+            AddWordSuggestions(pos);
+            AddContextMenuItem(_cutMenuItemText.Text, CutMenuItemClick);
+            AddContextMenuItem(_copyMenuItemText.Text, CopyMenuItemdClick);
+            AddContextMenuItem(_pasteMenuItemText.Text, PasteMenuItemClick);
+            AddContextMenuItem(_deleteMenuItemText.Text, DeleteMenuItemClick);
             AddContextMenuItem(_selectAllMenuItemText.Text, SelectAllMenuItemClick);
 
-            /*AddContextMenuSeparator();
+            AddContextMenuSeparator();
 
-            if (!string.IsNullOrEmpty(_spelling.CurrentWord))
-            {
-                string text = string.Format(translateCurrentWord.Text, _spelling.CurrentWord, CultureCodeToString(Settings.Dictionary));
-                AddContextMenuItem(text, translate_Click);
-            }
-
-            string entireText = string.Format(translateEntireText.Text, CultureCodeToString(Settings.Dictionary));
-            AddContextMenuItem(entireText, translateText_Click);*/
+            AddDictionaries();
 
             AddContextMenuSeparator();
 
-            try
+            var mi = new ToolStripMenuItem(_markIllFormedLinesText.Text)
             {
-                var dictionaryToolStripMenuItem = new ToolStripMenuItem(_dictionaryText.Text);
-                SpellCheckContextMenu.Items.Add(dictionaryToolStripMenuItem);
-
-                var toolStripDropDown = new ContextMenuStrip();
-
-                var noDicToolStripMenuItem = new ToolStripMenuItem("None");
-                noDicToolStripMenuItem.Click += DicToolStripMenuItemClick;
-                if (Settings.Dictionary == "None")
-                {
-                    noDicToolStripMenuItem.Checked = true;
-                }
-
-                toolStripDropDown.Items.Add(noDicToolStripMenuItem);
-
-                foreach (
-                    var fileName in
-                        Directory.GetFiles(AppSettings.GetDictionaryDir(), "*.dic", SearchOption.TopDirectoryOnly))
-                {
-                    var file = new FileInfo(fileName);
-
-                    var dic = file.Name.Replace(".dic", "");
-
-                    var dicToolStripMenuItem = new ToolStripMenuItem(dic);
-                    dicToolStripMenuItem.Click += DicToolStripMenuItemClick;
-
-                    if (Settings.Dictionary == dic)
-                    {
-                        dicToolStripMenuItem.Checked = true;
-                    }
-
-                    toolStripDropDown.Items.Add(dicToolStripMenuItem);
-                }
-
-                dictionaryToolStripMenuItem.DropDown = toolStripDropDown;
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine(ex);
-            }
-
-            AddContextMenuSeparator();
-
-            var mi =
-                new ToolStripMenuItem(_markIllFormedLinesText.Text)
-                {
-                    Checked = AppSettings.MarkIllFormedLinesInCommitMsg
-                };
+                Checked = AppSettings.MarkIllFormedLinesInCommitMsg
+            };
             mi.Click += MarkIllFormedLinesInCommitMsgClick;
+            SpellCheckContextMenu.Items.Add(mi);
+
+            mi = new ToolStripMenuItem(_autoCompletionText.Text)
+            {
+                Checked = AppSettings.ProvideAutocompletion
+            };
+            mi.Click += (s, _) =>
+            {
+                AppSettings.ProvideAutocompletion = !AppSettings.ProvideAutocompletion;
+                ToggleAutoCompletion();
+            };
             SpellCheckContextMenu.Items.Add(mi);
         }
 
@@ -557,11 +571,9 @@ namespace GitUI.SpellChecker
         private void DicToolStripMenuItemClick(object sender, EventArgs e)
         {
             // if a Module is available, then always change the "repository local" setting
-            // it will set a dictionary only for this Module (repository) localy
+            // it will set a dictionary only for this Module (repository) locally
 
-            var settings = IsUICommandsInitialized
-                ? Module.LocalSettings
-                : Settings;
+            var settings = Module.LocalSettings ?? Settings;
 
             settings.Dictionary = ((ToolStripItem)sender).Text;
             LoadDictionary();
@@ -588,6 +600,8 @@ namespace GitUI.SpellChecker
 
             if (!_disableAutoCompleteTriggerOnTextUpdate)
             {
+                _disableAutoCompleteTriggerOnTextUpdate = true; // only popup on key press
+
                 // Reset when timer is already running
                 if (AutoCompleteTimer.Enabled)
                 {
@@ -703,15 +717,21 @@ namespace GitUI.SpellChecker
 
         private void TextBox_KeyPress(object sender, KeyPressEventArgs e)
         {
+            _disableAutoCompleteTriggerOnTextUpdate = e.KeyChar.IsSeparator();
+
             OnKeyPress(e);
         }
 
         private void TextBox_SelectionChanged(object sender, EventArgs e)
         {
-            UpdateOrShowAutoComplete(false);
+            SelectionChanged?.Invoke(sender, e);
+        }
 
-            var handler = SelectionChanged;
-            handler?.Invoke(sender, e);
+        private void TextBox_DoubleClick(object sender, EventArgs e)
+        {
+            int charIndexAtMousePosition = TextBox.GetCharIndexFromPosition(TextBox.PointToClient(MousePosition));
+            (int start, int length) = _wordAtCursorExtractor.GetWordBounds(TextBox.Text, charIndexAtMousePosition);
+            TextBox.Select(start, length);
         }
 
         private void ShowWatermark()
@@ -719,7 +739,7 @@ namespace GitUI.SpellChecker
             if (!ContainsFocus && string.IsNullOrEmpty(TextBox.Text) && TextBoxFont != null)
             {
                 _isWatermarkShowing = true;
-                TextBox.Font = new Font(SystemFonts.MessageBoxFont, FontStyle.Italic);
+                TextBox.Font = new Font(TextBox.Font, FontStyle.Italic);
                 TextBox.ForeColor = SystemColors.InactiveCaption;
                 TextBox.Text = WatermarkText;
             }
@@ -891,11 +911,6 @@ namespace GitUI.SpellChecker
 
         private string GetWordAtCursor()
         {
-            if (TextBox.Text.Length > TextBox.SelectionStart && TextBox.Text[TextBox.SelectionStart].IsSeparator())
-            {
-                return null;
-            }
-
             return _wordAtCursorExtractor.Extract(TextBox.Text, TextBox.SelectionStart - 1);
         }
 
@@ -908,16 +923,9 @@ namespace GitUI.SpellChecker
         private void AcceptAutoComplete(AutoCompleteWord completionWord = null)
         {
             completionWord = completionWord ?? (AutoCompleteWord)AutoComplete.SelectedItem;
-
             var word = GetWordAtCursor();
-
-            var pos = TextBox.SelectionStart;
-
-            _disableAutoCompleteTriggerOnTextUpdate = true;
-            Text = Text.Remove(pos - word.Length, word.Length);
-            Text = Text.Insert(pos - word.Length, completionWord.Word);
-            _disableAutoCompleteTriggerOnTextUpdate = false;
-            TextBox.SelectionStart = pos + completionWord.Word.Length - word.Length;
+            TextBox.Select(TextBox.SelectionStart - word.Length, word.Length);
+            TextBox.SelectedText = completionWord.Word;
             CloseAutoComplete();
         }
 

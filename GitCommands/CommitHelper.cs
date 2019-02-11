@@ -1,5 +1,4 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 
 namespace GitCommands
 {
@@ -66,8 +65,9 @@ namespace GitCommands
                 {
                     File.Delete(amendSaveStateFilePath);
                 }
-                catch (Exception)
+                catch
                 {
+                    // ignore
                 }
             }
 

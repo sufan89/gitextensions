@@ -29,12 +29,7 @@ namespace Gerrit
         private string _originalGitReviewFileContent = string.Empty;
         private IGitModule Module => UICommands.GitModule;
 
-        public event EventHandler<GitUICommandsChangedEventArgs> GitUICommandsChanged;
-
-        private void OnGitUICommandsChanged(GitUICommands oldcommands)
-        {
-            GitUICommandsChanged?.Invoke(this, new GitUICommandsChangedEventArgs(oldcommands));
-        }
+        public event EventHandler<GitUICommandsChangedEventArgs> UICommandsChanged;
 
         private GitUICommands _uiCommands;
         public GitUICommands UICommands
@@ -42,9 +37,9 @@ namespace Gerrit
             get => _uiCommands;
             set
             {
-                var oldcommands = _uiCommands;
+                var oldCommands = _uiCommands;
                 _uiCommands = value;
-                OnGitUICommandsChanged(oldcommands);
+                UICommandsChanged?.Invoke(this, new GitUICommandsChangedEventArgs(oldCommands));
             }
         }
 
@@ -52,7 +47,7 @@ namespace Gerrit
             : base(true)
         {
             InitializeComponent();
-            Translate();
+            InitializeComplete();
 
             UICommands = (GitUICommands)uiCommands;
             if (UICommands != null)
@@ -160,7 +155,7 @@ namespace Gerrit
 
         private void lnkGitReviewPatterns_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            Process.Start(@"http://github.com/openstack-infra/git-review#git-review");
+            Process.Start(@"https://github.com/openstack-infra/git-review#git-review");
         }
     }
 }

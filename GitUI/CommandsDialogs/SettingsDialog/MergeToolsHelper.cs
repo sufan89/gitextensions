@@ -2,6 +2,7 @@
 using System.IO;
 using GitCommands;
 using GitCommands.Utils;
+using JetBrains.Annotations;
 using Microsoft.Win32;
 
 namespace GitUI.CommandsDialogs.SettingsDialog
@@ -13,6 +14,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog
             return settings.GlobalSettings.GetValue(setting);
         }
 
+        [CanBeNull]
         public static string GetFullPath(string fileName)
         {
             PathUtil.TryFindFullPath(fileName, out var fullPath);
@@ -39,15 +41,15 @@ namespace GitUI.CommandsDialogs.SettingsDialog
                     continue;
                 }
 
-                string fullName = string.Empty;
-                string programFilesPath = Environment.GetEnvironmentVariable("ProgramFiles");
+                string fullName;
+                string programFilesPath = Environment.GetEnvironmentVariable("ProgramFiles") ?? "";
 
                 if (CheckFileExists(programFilesPath))
                 {
                     return fullName;
                 }
 
-                programFilesPath = Environment.GetEnvironmentVariable("ProgramFiles(x86)");
+                programFilesPath = Environment.GetEnvironmentVariable("ProgramFiles(x86)") ?? "";
 
                 if ((IntPtr.Size == 8 ||
                     !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PROCESSOR_ARCHITEW6432"))) &&
@@ -63,6 +65,13 @@ namespace GitUI.CommandsDialogs.SettingsDialog
                     return fullName;
                 }
 
+                string localAppDataProgramsPath = Path.Combine(localAppDataPath, "Programs");
+
+                if (CheckFileExists(localAppDataProgramsPath))
+                {
+                    return fullName;
+                }
+
                 bool CheckFileExists(string path)
                 {
                     fullName = Path.Combine(path, location, fileName);
@@ -70,9 +79,10 @@ namespace GitUI.CommandsDialogs.SettingsDialog
                 }
             }
 
-            return string.Empty;
+            return "";
         }
 
+        [CanBeNull]
         private static string UnquoteString(string str)
         {
             if (string.IsNullOrEmpty(str))
@@ -89,6 +99,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog
             return str;
         }
 
+        [CanBeNull]
         public static string FindPathForKDiff(string pathFromConfig)
         {
             if (string.IsNullOrEmpty(pathFromConfig) || !File.Exists(pathFromConfig))
@@ -97,7 +108,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog
                 if (EnvUtils.RunningOnUnix())
                 {
                     // Maybe command -v is better, but didn't work
-                    kdiff3path = GitCommandHelpers.RunCmd("which", "kdiff3").Replace("\n", string.Empty);
+                    kdiff3path = new Executable("which").GetOutput("kdiff3").Replace("\n", "");
                     if (string.IsNullOrEmpty(kdiff3path))
                     {
                         return null;
@@ -124,6 +135,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog
             return null;
         }
 
+        [CanBeNull]
         public static string GetDiffToolExeFile(string difftoolText)
         {
             string diffTool = difftoolText.ToLowerInvariant();
@@ -249,6 +261,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog
             return "";
         }
 
+        [CanBeNull]
         public static string GetMergeToolExeFile(string mergeToolText)
         {
             string mergeTool = mergeToolText.ToLowerInvariant();

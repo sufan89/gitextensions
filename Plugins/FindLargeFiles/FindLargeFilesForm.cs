@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+using GitCommands;
 using GitExtUtils.GitUI;
 using GitUI;
 using GitUIPluginInterfaces;
@@ -33,7 +34,7 @@ namespace FindLargeFiles
             commitCountDataGridViewTextBoxColumn.Width = DpiUtil.Scale(88);
             lastCommitDateDataGridViewTextBoxColumn.Width = DpiUtil.Scale(103);
 
-            Translate();
+            InitializeComplete();
 
             sHADataGridViewTextBoxColumn.DataPropertyName = nameof(GitObject.SHA);
             pathDataGridViewTextBoxColumn.DataPropertyName = nameof(GitObject.Path);
@@ -60,7 +61,13 @@ namespace FindLargeFiles
                     DateTime date;
                     if (!revData.ContainsKey(commit))
                     {
-                        string revDate = _gitCommands.RunGitCmd(string.Format("show -s {0} --format=\"%ci\"", commit));
+                        var args = new GitArgumentBuilder("show")
+                        {
+                            "-s",
+                            commit,
+                            "--format=\"%ci\""
+                        };
+                        string revDate = _gitCommands.GitExecutable.GetOutput(args);
                         DateTime.TryParse(revDate, out date);
                         revData.Add(commit, date);
                     }
@@ -101,15 +108,21 @@ namespace FindLargeFiles
                     var packFiles = Directory.GetFiles(objectsPackDirectory, "pack-*.idx");
                     foreach (var pack in packFiles)
                     {
-                        string[] objects = _gitCommands.RunGitCmd(string.Concat("verify-pack -v ", pack)).Split('\n');
+                        var args = new GitArgumentBuilder("verify-pack")
+                        {
+                            "-v",
+                            pack
+                        };
+
+                        string[] objects = _gitCommands.GitExecutable.GetOutput(args).Split('\n');
                         ThreadHelper.JoinableTaskFactory.Run(async () =>
                         {
                             await pbRevisions.SwitchToMainThreadAsync();
                             pbRevisions.Value = pbRevisions.Value + (int)((_revList.Length * 0.1f) / packFiles.Length);
                         });
-                        foreach (var gitobj in objects.Where(x => x.Contains(" blob ")))
+                        foreach (var gitObject in objects.Where(x => x.Contains(" blob ")))
                         {
-                            string[] dataFields = gitobj.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                            string[] dataFields = gitObject.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                             if (_list.TryGetValue(dataFields[0], out var curGitObject))
                             {
                                 if (int.TryParse(dataFields[3], out var compressedSize))
@@ -145,16 +158,18 @@ namespace FindLargeFiles
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
-            _revList = _gitCommands.RunGitCmd("rev-list HEAD").Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+            var args = new GitArgumentBuilder("rev-list") { "HEAD" };
+            _revList = _gitCommands.GitExecutable.GetOutput(args).Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
             pbRevisions.Maximum = (int)(_revList.Length * 1.1f);
             BranchesGrid.DataSource = _gitObjects;
-            Thread thread = new Thread(FindLargeFilesFunction);
+            var thread = new Thread(FindLargeFilesFunction);
             thread.Start();
         }
 
         private IEnumerable<GitObject> GetLargeFiles(float threshold)
         {
-            int thresholdSize = (int)(threshold * 1024 * 1024);
+            var thresholdSize = (int)(threshold * 1024 * 1024);
             for (int i = 0; i < _revList.Length; i++)
             {
                 ThreadHelper.JoinableTaskFactory.Run(async () =>
@@ -163,7 +178,12 @@ namespace FindLargeFiles
                     pbRevisions.Value = i;
                 });
                 string rev = _revList[i];
-                string[] objects = _gitCommands.RunGitCmd(string.Concat("ls-tree -zrl ", rev)).Split(new[] { '\0' }, StringSplitOptions.RemoveEmptyEntries);
+                var args = new GitArgumentBuilder("ls-tree")
+                {
+                    "-zrl",
+                    rev
+                };
+                string[] objects = _gitCommands.GitExecutable.GetOutput(args).Split(new[] { '\0' }, StringSplitOptions.RemoveEmptyEntries);
                 foreach (string objData in objects)
                 {
                     // "100644 blob b17a497cdc6140aa3b9a681344522f44768165ac 2120195\tBin/Dictionaries/de-DE.dic"
@@ -185,19 +205,19 @@ namespace FindLargeFiles
         {
             if (MessageBox.Show(this, _areYouSureToDelete.Text, _deleteCaption.Text, MessageBoxButtons.YesNo) == DialogResult.Yes)
             {
-                StringBuilder sb = new StringBuilder();
+                var sb = new StringBuilder();
                 foreach (GitObject gitObject in _gitObjects.Where(gitObject => gitObject.Delete))
                 {
                     sb.AppendLine(string.Format("\"{0}\" filter-branch --index-filter \"git rm -r -f --cached --ignore-unmatch {1}\" --prune-empty -- --all",
-                        _gitCommands.GitCommand, gitObject.Path));
+                        AppSettings.GitCommand, gitObject.Path));
                 }
 
                 sb.AppendLine(string.Format("for /f %%a IN ('\"{0}\" for-each-ref --format=%%^(refname^) refs/original/') DO \"{0}\" update-ref -d %%a",
-                    _gitCommands.GitCommand));
+                    AppSettings.GitCommand));
                 sb.AppendLine(string.Format("\"{0}\" reflog expire --expire=now --all",
-                    _gitCommands.GitCommand));
+                    AppSettings.GitCommand));
                 sb.AppendLine(string.Format("\"{0}\" gc --aggressive --prune=now",
-                    _gitCommands.GitCommand));
+                    AppSettings.GitCommand));
                 _gitUiCommands.GitUICommands.StartBatchFileProcessDialog(sb.ToString());
             }
 

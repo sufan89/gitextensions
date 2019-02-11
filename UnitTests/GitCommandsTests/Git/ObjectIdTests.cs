@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using System.Text.RegularExpressions;
 using GitCommands;
 using GitUIPluginInterfaces;
 using JetBrains.Annotations;
@@ -101,11 +102,22 @@ namespace GitCommandsTests.Git
         }
 
         [Test]
-        public void UnstagedId_has_expected_value()
+        public void ParseFromRegexCapture()
+        {
+            var objectId = ObjectId.Random();
+            var str = "XYZ" + objectId + "XYZ";
+
+            Assert.AreEqual(objectId, ObjectId.Parse(str, Regex.Match(str, "[a-f0-9]{40}")));
+            Assert.Throws<FormatException>(() => ObjectId.Parse(str, Regex.Match(str, "[a-f0-9]{39}")));
+            Assert.Throws<FormatException>(() => ObjectId.Parse(str, Regex.Match(str, "[XYZa-f0-9]{39}")));
+        }
+
+        [Test]
+        public void WorkTreeId_has_expected_value()
         {
             Assert.AreEqual(
                 "1111111111111111111111111111111111111111",
-                ObjectId.UnstagedId.ToString());
+                ObjectId.WorkTreeId.ToString());
         }
 
         [Test]
@@ -125,9 +137,9 @@ namespace GitCommandsTests.Git
         }
 
         [Test]
-        public void UnstagedId_is_artificial()
+        public void WorkTreeId_is_artificial()
         {
-            Assert.IsTrue(ObjectId.UnstagedId.IsArtificial);
+            Assert.IsTrue(ObjectId.WorkTreeId.IsArtificial);
         }
 
         [Test]
@@ -154,12 +166,12 @@ namespace GitCommandsTests.Git
                 ObjectId.Parse("abcdefabcdefabcdefabcdefabcdefabcdefabcd"));
 
             Assert.AreEqual(
-                ObjectId.UnstagedId,
-                ObjectId.UnstagedId);
+                ObjectId.WorkTreeId,
+                ObjectId.WorkTreeId);
 
             Assert.AreEqual(
-                ObjectId.UnstagedId,
-                ObjectId.Parse(GitRevision.UnstagedGuid));
+                ObjectId.WorkTreeId,
+                ObjectId.Parse(GitRevision.WorkTreeGuid));
 
             Assert.AreEqual(
                 ObjectId.IndexId,
@@ -186,7 +198,7 @@ namespace GitCommandsTests.Git
                 ObjectId.Parse("0102030405060708091011121314151617181920"));
 
             Assert.AreNotEqual(
-                ObjectId.UnstagedId,
+                ObjectId.WorkTreeId,
                 ObjectId.IndexId);
         }
 
@@ -202,8 +214,8 @@ namespace GitCommandsTests.Git
                 ObjectId.Parse("abcdefabcdefabcdefabcdefabcdefabcdefabcd").GetHashCode());
 
             Assert.AreEqual(
-                ObjectId.UnstagedId.GetHashCode(),
-                ObjectId.UnstagedId.GetHashCode());
+                ObjectId.WorkTreeId.GetHashCode(),
+                ObjectId.WorkTreeId.GetHashCode());
 
             Assert.AreEqual(
                 ObjectId.IndexId.GetHashCode(),
@@ -218,7 +230,7 @@ namespace GitCommandsTests.Git
                 ObjectId.Parse("0102030405060708091011121314151617181920").GetHashCode());
 
             Assert.AreNotEqual(
-                ObjectId.UnstagedId.GetHashCode(),
+                ObjectId.WorkTreeId.GetHashCode(),
                 ObjectId.IndexId.GetHashCode());
         }
 
@@ -259,6 +271,32 @@ namespace GitCommandsTests.Git
 
             Assert.Throws<ArgumentOutOfRangeException>(() => id.ToShortString(-1));
             Assert.Throws<ArgumentOutOfRangeException>(() => id.ToShortString(ObjectId.Sha1CharCount + 1));
+        }
+
+        [Test]
+        public void Equals_with_string()
+        {
+            for (var i = 0; i < 100; i++)
+            {
+                var objectId = ObjectId.Random();
+                Assert.True(objectId.Equals(objectId.ToString()));
+            }
+
+            Assert.False(ObjectId.Random().Equals((string)null));
+            Assert.False(ObjectId.Random().Equals(""));
+            Assert.False(ObjectId.Random().Equals("gibberish"));
+            Assert.False(ObjectId.Parse("0123456789012345678901234567890123456789").Equals(" 0123456789012345678901234567890123456789 "));
+            Assert.False(ObjectId.Parse("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa").Equals("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"));
+        }
+
+        [Test]
+        public void Equals_using_operator()
+        {
+            string objectIdString = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+            Assert.IsTrue(ObjectId.Parse(objectIdString) == ObjectId.Parse(objectIdString));
+            Assert.IsFalse(ObjectId.Parse(objectIdString) != ObjectId.Parse(objectIdString));
+            Assert.IsFalse(ObjectId.Parse(objectIdString) == ObjectId.Random());
+            Assert.IsTrue(ObjectId.Parse(objectIdString) != ObjectId.Random());
         }
     }
 }

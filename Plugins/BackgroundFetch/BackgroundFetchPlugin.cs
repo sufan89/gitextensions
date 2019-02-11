@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
+using System.Linq;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
+using BackgroundFetch.Properties;
+using GitCommands;
 using GitUIPluginInterfaces;
 using ResourceManager;
 
@@ -15,6 +18,7 @@ namespace BackgroundFetch
         {
             SetNameAndDescription("Periodic background fetch");
             Translate();
+            Icon = Resources.IconBackgroundFetch;
         }
 
         private IDisposable _cancellationToken;
@@ -62,13 +66,13 @@ namespace BackgroundFetch
                     Observable.Timer(TimeSpan.FromSeconds(Math.Max(5, fetchInterval)))
                               .SelectMany(i =>
                               {
-                                  // if git not runing - start fetch immediately
+                                  // if git not running - start fetch immediately
                                   if (!gitModule.IsRunningGitProcess())
                                   {
                                       return Observable.Return(i);
                                   }
 
-                                  // in other case - every 5 seconds check if git still runnnig
+                                  // in other case - every 5 seconds check if git still running
                                   return Observable
                                       .Interval(TimeSpan.FromSeconds(5))
                                       .SkipWhile(ii => gitModule.IsRunningGitProcess())
@@ -79,16 +83,27 @@ namespace BackgroundFetch
                               .ObserveOn(ThreadPoolScheduler.Instance)
                               .Subscribe(i =>
                                   {
+                                      GitArgumentBuilder args;
                                       if (_fetchAllSubmodules.ValueOrDefault(Settings))
                                       {
-                                          _currentGitUiCommands.GitCommand("submodule foreach --recursive git fetch --all");
+                                        args = new GitArgumentBuilder("submodule")
+                                        {
+                                            "foreach",
+                                            "--recursive",
+                                            "git",
+                                            "fetch",
+                                            "--all"
+                                        };
+
+                                        _currentGitUiCommands.GitModule.GitExecutable.GetOutput(args);
                                       }
 
-                                      var gitCmd = _gitCommand.ValueOrDefault(Settings).Trim();
-                                      var msg = _currentGitUiCommands.GitCommand(gitCmd);
+                                      var gitCmd = _gitCommand.ValueOrDefault(Settings).Trim().SplitBySpace();
+                                      args = new GitArgumentBuilder(gitCmd[0]) { gitCmd.Skip(1) };
+                                      var msg = _currentGitUiCommands.GitModule.GitExecutable.GetOutput(args);
                                       if (_autoRefresh.ValueOrDefault(Settings))
                                       {
-                                          if (gitCmd.StartsWith("fetch", StringComparison.InvariantCultureIgnoreCase))
+                                          if (gitCmd[0].Equals("fetch", StringComparison.InvariantCultureIgnoreCase))
                                           {
                                               if (msg.Contains("From"))
                                               {

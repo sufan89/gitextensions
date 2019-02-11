@@ -1,95 +1,101 @@
 ﻿using System.Drawing;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
+using GitUI.Properties;
+using ResourceManager;
 
 namespace GitUI.CommandsDialogs.AboutBoxDialog
 {
-    public class FormContributors : GitExtensionsForm
+    public sealed class FormContributors : GitExtensionsForm
     {
-        private static readonly string[] tabCaptions = { "The Coders", "The Translators", "The Designers" };
-
-        private readonly TextBox[] _textboxes = new TextBox[tabCaptions.Length];
-        private readonly TabPage[] _tabPages = new TabPage[tabCaptions.Length];
-        private TabControl _tabControl;
+        private readonly TranslationString _developers = new TranslationString("Developers");
+        private readonly TranslationString _translators = new TranslationString("Translators");
+        private readonly TranslationString _designers = new TranslationString("Designers");
+        private readonly TranslationString _team = new TranslationString("Team");
+        private readonly TranslationString _contributors = new TranslationString("Contributors");
+        private readonly TranslationString _caption = new TranslationString("The application would not be possible without...");
 
         public FormContributors()
         {
-            SetupForm();
-            Translate();
-            this.AdjustForDpiScaling();
-        }
+            InitialiseComponent();
+            InitializeComplete();
 
-        private static TextBox GetNewTextBox()
-        {
-            return new TextBox
+            void InitialiseComponent()
             {
-                BackColor = Color.White,
-                Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", 9.75F, FontStyle.Regular, GraphicsUnit.Point, 0),
-                Margin = new Padding(0),
-                Multiline = true,
-                ReadOnly = true,
-                ScrollBars = ScrollBars.Vertical,
-                TabStop = false
-            };
-        }
+                SuspendLayout();
+                Controls.Clear();
 
-        private static TabPage GetNewTabPage(TextBox tb, string caption)
-        {
-            var tp = new TabPage
-            {
-                Margin = new Padding(0),
-                Text = caption
-            };
-            tp.Controls.Add(tb);
-            return tp;
-        }
+                var tabControl = GetNewTabControl();
 
-        private static TabControl GetNewTabControl()
-        {
-            return new TabControl
-            {
-                Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold, GraphicsUnit.Point, 0),
-                SelectedIndex = 0,
-            };
-        }
+                var tabCaptions = new[] { _developers.Text, _translators.Text, _designers.Text };
+                var textBoxes = new TextBox[tabCaptions.Length];
+                var tabPages = new TabPage[tabCaptions.Length];
+                for (var i = 0; i < tabCaptions.Length; i++)
+                {
+                    textBoxes[i] = GetNewTextBox();
+                    tabPages[i] = GetNewTabPage(textBoxes[i], tabCaptions[i]);
+                }
 
-        private void SetupForm()
-        {
-            SuspendLayout();
-            Controls.Clear();
+                const string NEWLINES = @"\r\n?|\n";
+                textBoxes[0].Text = string.Format("{0}:\r\n{1}\r\n\r\n{2}:\r\n{3}",
+                    _team.Text, Regex.Replace(Resources.Team, NEWLINES, " "),
+                    _contributors.Text, Regex.Replace(Resources.Coders, NEWLINES, " "));
+                textBoxes[1].Text = Regex.Replace(Resources.Translators, NEWLINES, " ");
+                textBoxes[2].Text = Regex.Replace(Resources.Designers, NEWLINES, " ");
 
-            _tabControl = GetNewTabControl();
-            _tabControl.SuspendLayout();
+                Controls.Add(tabControl);
 
-            for (int i = 0; i < tabCaptions.Length; i++)
-            {
-                _textboxes[i] = GetNewTextBox();
-                _tabPages[i] = GetNewTabPage(_textboxes[i], tabCaptions[i]);
-                _tabControl.Controls.Add(_tabPages[i]);
+                AutoScaleDimensions = new SizeF(96F, 96F);
+                AutoScaleMode = AutoScaleMode.Dpi;
+                ClientSize = new Size(624, 442);
+                FormBorderStyle = FormBorderStyle.FixedDialog;
+                MaximizeBox = false;
+                MinimizeBox = false;
+                StartPosition = FormStartPosition.CenterParent;
+                Text = _caption.Text;
+
+                ResumeLayout(false);
+
+                return;
+
+                TextBox GetNewTextBox()
+                {
+                    return new TextBox
+                    {
+                        BackColor = Color.White,
+                        BorderStyle = BorderStyle.None,
+                        Dock = DockStyle.Fill,
+                        Margin = new Padding(0),
+                        Multiline = true,
+                        ReadOnly = true,
+                        ScrollBars = ScrollBars.Vertical,
+                        TabStop = false
+                    };
+                }
+
+                TabPage GetNewTabPage(TextBox textBox, string caption)
+                {
+                    var tabPage = new TabPage
+                    {
+                        BorderStyle = BorderStyle.None,
+                        Margin = new Padding(0),
+                        Padding = new Padding(0),
+                        Text = caption
+                    };
+                    tabPage.Controls.Add(textBox);
+                    tabControl.Controls.Add(tabPage);
+                    return tabPage;
+                }
+
+                TabControl GetNewTabControl()
+                {
+                    return new FullBleedTabControl
+                    {
+                        Dock = DockStyle.Fill,
+                        SelectedIndex = 0,
+                    };
+                }
             }
-
-            Controls.Add(_tabControl);
-
-            AutoScaleDimensions = new SizeF(96F, 96F);
-            AutoScaleMode = AutoScaleMode.Dpi;
-            ClientSize = new Size(624, 442);
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
-            MinimizeBox = false;
-            StartPosition = FormStartPosition.CenterParent;
-            Text = "Thanks to...";
-
-            ResumeLayout(false);
-        }
-
-        public void LoadContributors(string coders, string translators, string designers)
-        {
-            const string NEWLINES = @"\r\n?|\n";
-            _textboxes[0].Text = Regex.Replace(coders, NEWLINES, " ");
-            _textboxes[1].Text = Regex.Replace(translators, NEWLINES, " ");
-            _textboxes[2].Text = Regex.Replace(designers, NEWLINES, " ");
         }
     }
 }

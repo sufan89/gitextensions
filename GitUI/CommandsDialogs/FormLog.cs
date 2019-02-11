@@ -4,16 +4,17 @@ namespace GitUI.CommandsDialogs
 {
     public partial class FormLog : GitModuleForm
     {
+        [Obsolete("For VS designer and translation test only. Do not remove.")]
         private FormLog()
-            : this(null)
         {
+            InitializeComponent();
         }
 
         public FormLog(GitUICommands commands)
-            : base(enablePositionRestore: true, commands)
+            : base(commands)
         {
             InitializeComponent();
-            Translate();
+            InitializeComplete();
 
             diffViewer.ExtraDiffArgumentsChanged += DiffViewerExtraDiffArgumentsChanged;
         }

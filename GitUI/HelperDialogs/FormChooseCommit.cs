@@ -1,37 +1,39 @@
 ﻿using System;
 using System.Windows.Forms;
 using GitCommands;
-using GitUI.UserControls.RevisionGridClasses;
+using GitUI.UserControls.RevisionGrid;
 using GitUIPluginInterfaces;
+using JetBrains.Annotations;
 
 namespace GitUI.HelperDialogs
 {
     public partial class FormChooseCommit : GitModuleForm
     {
+        [Obsolete("For VS designer and translation test only. Do not remove.")]
         private FormChooseCommit()
-            : this(null)
         {
+            InitializeComponent();
         }
 
-        private FormChooseCommit(GitUICommands commands)
+        private FormChooseCommit([NotNull] GitUICommands commands)
             : base(commands)
         {
             InitializeComponent();
-            Translate();
+            InitializeComplete();
         }
 
-        public FormChooseCommit(GitUICommands commands, string preselectCommit, bool showArtificial = false)
+        public FormChooseCommit([NotNull] GitUICommands commands, [CanBeNull] string preselectCommit, bool showArtificial = false)
             : this(commands)
         {
             revisionGrid.MultiSelect = false;
-            revisionGrid.ShowUncommitedChangesIfPossible = showArtificial && !revisionGrid.Module.IsBareRepository();
+            revisionGrid.ShowUncommittedChangesIfPossible = showArtificial && !revisionGrid.Module.IsBareRepository();
 
             if (!string.IsNullOrEmpty(preselectCommit))
             {
-                var guid = Module.RevParse(preselectCommit);
-                if (guid != null)
+                var objectId = Module.RevParse(preselectCommit);
+                if (objectId != null)
                 {
-                    revisionGrid.SetInitialRevision(guid.ToString());
+                    revisionGrid.InitialObjectId = objectId;
                 }
             }
         }
@@ -69,13 +71,13 @@ namespace GitUI.HelperDialogs
 
         private void buttonGotoCommit_Click(object sender, EventArgs e)
         {
-            revisionGrid.MenuCommands.GotoCommitExcecute();
+            revisionGrid.MenuCommands.GotoCommitExecute();
         }
 
         private void linkLabelParent_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
             var linkLabel = (LinkLabel)sender;
-            var parentId = (string)linkLabel.Tag;
+            var parentId = (ObjectId)linkLabel.Tag;
 
             revisionGrid.SetSelectedRevision(parentId);
         }
@@ -98,7 +100,7 @@ namespace GitUI.HelperDialogs
                 return;
             }
 
-            var parents = SelectedRevision.ParentGuids;
+            var parents = SelectedRevision.ParentIds;
 
             if (parents == null || parents.Count == 0)
             {
@@ -106,13 +108,13 @@ namespace GitUI.HelperDialogs
             }
 
             linkLabelParent.Tag = parents[0];
-            linkLabelParent.Text = GitRevision.ToShortSha(parents[0]);
+            linkLabelParent.Text = parents[0].ToShortString();
 
             if (parents.Count > 1)
             {
                 linkLabelParent2.Visible = true;
                 linkLabelParent2.Tag = parents[1];
-                linkLabelParent2.Text = GitRevision.ToShortSha(parents[1]);
+                linkLabelParent2.Text = parents[1].ToShortString();
             }
             else
             {

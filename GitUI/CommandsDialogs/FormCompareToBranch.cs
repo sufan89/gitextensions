@@ -1,29 +1,28 @@
 ﻿using System;
 using System.Windows.Forms;
+using GitUIPluginInterfaces;
+using JetBrains.Annotations;
 
 namespace GitUI.CommandsDialogs
 {
     public partial class FormCompareToBranch : GitModuleForm
     {
+        [Obsolete("For VS designer and translation test only. Do not remove.")]
         private FormCompareToBranch()
-            : this(null, null)
         {
+            InitializeComponent();
         }
 
-        public FormCompareToBranch(GitUICommands commands, string selectedCommit) : base(commands)
+        public FormCompareToBranch([NotNull] GitUICommands commands, [CanBeNull] ObjectId selectedCommit)
+            : base(commands)
         {
             MinimizeBox = false;
             MaximizeBox = false;
             ShowInTaskbar = false;
             InitializeComponent();
-            Translate();
-            if (!IsUICommandsInitialized)
-            {
-                // UICommands is not initialized in translation unit test.
-                return;
-            }
+            InitializeComplete();
 
-            branchSelector.Initialize(remote: true, containRevisons: null);
+            branchSelector.Initialize(remote: true, containRevisions: null);
             branchSelector.CommitToCompare = selectedCommit;
             Activated += OnActivated;
         }

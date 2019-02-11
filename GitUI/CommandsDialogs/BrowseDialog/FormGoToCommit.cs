@@ -24,11 +24,17 @@ namespace GitUI.CommandsDialogs.BrowseDialog
         private readonly AsyncLoader _tagsLoader = new AsyncLoader();
         private readonly AsyncLoader _branchesLoader = new AsyncLoader();
 
+        [Obsolete("For VS designer and translation test only. Do not remove.")]
+        private FormGoToCommit()
+        {
+            InitializeComponent();
+        }
+
         public FormGoToCommit(GitUICommands commands)
             : base(commands)
         {
             InitializeComponent();
-            Translate();
+            InitializeComplete();
         }
 
         private void FormGoToCommit_Load(object sender, EventArgs e)
@@ -65,12 +71,12 @@ namespace GitUI.CommandsDialogs.BrowseDialog
 
         private void linkGitRevParse_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            Process.Start(@"https://www.kernel.org/pub/software/scm/git/docs/git-rev-parse.html#_specifying_revisions");
+            Process.Start(@"https://git-scm.com/docs/git-rev-parse#_specifying_revisions");
         }
 
         private void LoadTagsAsync()
         {
-            comboBoxTags.Text = Strings.GetLoadingData();
+            comboBoxTags.Text = Strings.LoadingData;
             ThreadHelper.JoinableTaskFactory.RunAsync(() =>
             {
                 return _tagsLoader.LoadAsync(
@@ -87,7 +93,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog
 
         private void LoadBranchesAsync()
         {
-            comboBoxBranches.Text = Strings.GetLoadingData();
+            comboBoxBranches.Text = Strings.LoadingData;
             ThreadHelper.JoinableTaskFactory.RunAsync(() =>
             {
                 return _branchesLoader.LoadAsync(

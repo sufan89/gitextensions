@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
+using GitCommands;
 using GitExtUtils.GitUI;
 using GitUI.Properties;
 
@@ -11,6 +12,12 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
     public partial class FormManageWorktree : GitModuleForm
     {
         private List<WorkTree> _worktrees;
+
+        [Obsolete("For VS designer and translation test only. Do not remove.")]
+        private FormManageWorktree()
+        {
+            InitializeComponent();
+        }
 
         public FormManageWorktree(GitUICommands commands)
             : base(commands)
@@ -24,7 +31,7 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
             Open.Width = DpiUtil.Scale(39);
             Delete.Width = DpiUtil.Scale(44);
             Worktrees.AutoGenerateColumns = false;
-            Translate();
+            InitializeComplete();
 
             Path.DataPropertyName = nameof(WorkTree.Path);
             Type.DataPropertyName = nameof(WorkTree.Type);
@@ -46,13 +53,13 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
 
         private void Initialize()
         {
-            var listWorktree = ThreadHelper.JoinableTaskFactory.Run(() => UICommands.CommandLineCommandAsync("git", "worktree list --porcelain"));
-            var worktreesLines = listWorktree.Split('\n').GetEnumerator();
+            var lines = Module.GitExecutable.GetOutput("worktree list --porcelain").Split('\n').GetEnumerator();
+
             _worktrees = new List<WorkTree>();
             WorkTree currentWorktree = null;
-            while (worktreesLines.MoveNext())
+            while (lines.MoveNext())
             {
-                var current = (string)worktreesLines.Current;
+                var current = (string)lines.Current;
                 if (string.IsNullOrWhiteSpace(current))
                 {
                     continue;
@@ -92,16 +99,16 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
             {
                 if (i == 0)
                 {
-                    Worktrees.Rows[i].Cells["Delete"].Value = Resources.IconBlank;
+                    Worktrees.Rows[i].Cells["Delete"].Value = Images.Blank;
                     if (IsCurrentlyOpenedWorktree(_worktrees[0]))
                     {
-                        Worktrees.Rows[i].Cells["Open"].Value = Resources.IconBlank;
+                        Worktrees.Rows[i].Cells["Open"].Value = Images.Blank;
                     }
                 }
                 else if (!CanDeleteWorkspace(_worktrees[i]))
                 {
-                    Worktrees.Rows[i].Cells["Open"].Value = Resources.IconBlank;
-                    Worktrees.Rows[i].Cells["Delete"].Value = Resources.IconBlank;
+                    Worktrees.Rows[i].Cells["Open"].Value = Images.Blank;
+                    Worktrees.Rows[i].Cells["Delete"].Value = Images.Blank;
                 }
             }
 

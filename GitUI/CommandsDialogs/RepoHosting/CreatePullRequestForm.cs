@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands;
 using GitUIPluginInterfaces.RepositoryHosts;
+using JetBrains.Annotations;
+using Microsoft.VisualStudio.Threading;
 using ResourceManager;
 
 namespace GitUI.CommandsDialogs.RepoHosting
@@ -28,6 +31,12 @@ namespace GitUI.CommandsDialogs.RepoHosting
         private string _prevTitle;
         private readonly AsyncLoader _remoteLoader = new AsyncLoader();
 
+        [Obsolete("For VS designer and translation test only. Do not remove.")]
+        private CreatePullRequestForm()
+        {
+            InitializeComponent();
+        }
+
         public CreatePullRequestForm(GitUICommands commands, IRepositoryHostPlugin repoHost, string chooseRemote, string chooseBranch)
             : base(commands)
         {
@@ -35,7 +44,7 @@ namespace GitUI.CommandsDialogs.RepoHosting
             _chooseRemote = chooseRemote;
             _currentBranch = chooseBranch;
             InitializeComponent();
-            Translate();
+            InitializeComplete();
             _prevTitle = _titleTB.Text;
             _pullReqTargetsCB.DisplayMember = nameof(IHostedRemote.DisplayData);
         }
@@ -97,72 +106,58 @@ namespace GitUI.CommandsDialogs.RepoHosting
             _remoteBranchesCB.Items.Clear();
             _remoteBranchesCB.Text = _strLoading.Text;
 
-            AsyncLoader.DoAsync(
-                () => _currentHostedRemote.GetHostedRepository().Branches,
-                branches =>
-                {
-                    branches.Sort((a, b) => string.Compare(a.Name, b.Name, true));
-                    int selectItem = 0;
-                    _remoteBranchesCB.Items.Clear();
-                    for (int i = 0; i < branches.Count; i++)
-                    {
-                        if (branches[i].Name == _currentBranch)
-                        {
-                            selectItem = i;
-                        }
-
-                        _remoteBranchesCB.Items.Add(branches[i].Name);
-                    }
-
-                    _createBtn.Enabled = true;
-                    if (branches.Count > 0)
-                    {
-                        _remoteBranchesCB.SelectedIndex = selectItem;
-                    }
-                },
-                ex => { ex.Handled = false; });
+            PopulateBranchesComboAndEnableCreateButton(_currentHostedRemote, _remoteBranchesCB);
         }
 
-        private IHostedRemote MyRemote
-        {
-            get
-            {
-                return _hostedRemotes.FirstOrDefault(r => r.IsOwnedByMe);
-            }
-        }
+        [CanBeNull]
+        private IHostedRemote MyRemote => _hostedRemotes.FirstOrDefault(r => r.IsOwnedByMe);
 
         private void LoadMyBranches()
         {
             _yourBranchesCB.Items.Clear();
 
-            if (MyRemote == null)
+            var myRemote = MyRemote;
+
+            if (myRemote == null)
             {
                 return;
             }
 
-            AsyncLoader.DoAsync(
-                () => MyRemote.GetHostedRepository().Branches,
-                branches =>
-                {
-                    branches.Sort((a, b) => string.Compare(a.Name, b.Name, true));
-                    int selectItem = 0;
-                    for (int i = 0; i < branches.Count; i++)
+            PopulateBranchesComboAndEnableCreateButton(myRemote, _yourBranchesCB);
+        }
+
+        private void PopulateBranchesComboAndEnableCreateButton(IHostedRemote remote, ComboBox comboBox)
+        {
+            ThreadHelper.JoinableTaskFactory.RunAsync(
+                    async () =>
                     {
-                        if (branches[i].Name == _currentBranch)
+                        await TaskScheduler.Default;
+
+                        var branches = remote.GetHostedRepository().GetBranches();
+
+                        await this.SwitchToMainThreadAsync();
+
+                        comboBox.Items.Clear();
+
+                        var selectItem = 0;
+                        for (var i = 0; i < branches.Count; i++)
                         {
-                            selectItem = i;
+                            if (branches[i].Name == _currentBranch)
+                            {
+                                selectItem = i;
+                            }
+
+                            comboBox.Items.Add(branches[i].Name);
                         }
 
-                        _yourBranchesCB.Items.Add(branches[i].Name);
-                    }
+                        if (branches.Count > 0)
+                        {
+                            comboBox.SelectedIndex = selectItem;
+                        }
 
-                    _createBtn.Enabled = true;
-                    if (branches.Count > 0)
-                    {
-                        _yourBranchesCB.SelectedIndex = selectItem;
-                    }
-                },
-                ex => { ex.Handled = false; });
+                        _createBtn.Enabled = true;
+                    })
+                .FileAndForget();
         }
 
         private void _yourBranchCB_SelectedIndexChanged(object sender, EventArgs e)
@@ -170,7 +165,7 @@ namespace GitUI.CommandsDialogs.RepoHosting
             if (_prevTitle == _titleTB.Text && !_yourBranchesCB.Text.IsNullOrWhiteSpace() && MyRemote != null)
             {
                 var lastMsg = Module.GetPreviousCommitMessages(1, MyRemote.Name.Combine("/", _yourBranchesCB.Text)).FirstOrDefault();
-                _titleTB.Text = lastMsg.TakeUntilStr("\n");
+                _titleTB.Text = lastMsg?.SubstringUntil('\n');
                 _prevTitle = _titleTB.Text;
             }
         }

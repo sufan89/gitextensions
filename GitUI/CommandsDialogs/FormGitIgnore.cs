@@ -63,12 +63,18 @@ namespace GitUI.CommandsDialogs
 
         private readonly IGitIgnoreDialogModel _dialogModel;
 
+        [Obsolete("For VS designer and translation test only. Do not remove.")]
+        private FormGitIgnore()
+        {
+            InitializeComponent();
+        }
+
         public FormGitIgnore(GitUICommands commands, bool localExclude)
             : base(commands)
         {
             _localExclude = localExclude;
             InitializeComponent();
-            Translate();
+            InitializeComplete();
 
             _dialogModel = CreateGitIgnoreDialogModel(localExclude);
 
@@ -208,9 +214,11 @@ namespace GitUI.CommandsDialogs
             // workaround to prevent GitIgnoreFileLoaded event handling (it causes wrong _originalGitIgnoreFileContent update)
             // TODO: implement in FileViewer separate events for loading text from file and for setting text directly via ViewText
             _NO_TRANSLATE_GitIgnoreEdit.TextLoaded -= GitIgnoreFileLoaded;
-            _NO_TRANSLATE_GitIgnoreEdit.ViewTextAsync(ExcludeFile,
-                currentFileContent + Environment.NewLine +
-                string.Join(Environment.NewLine, patternsToAdd) + Environment.NewLine + string.Empty);
+            ThreadHelper.JoinableTaskFactory.RunAsync(
+                () => _NO_TRANSLATE_GitIgnoreEdit.ViewTextAsync(
+                    ExcludeFile,
+                    currentFileContent + Environment.NewLine +
+                    string.Join(Environment.NewLine, patternsToAdd) + Environment.NewLine + string.Empty));
             _NO_TRANSLATE_GitIgnoreEdit.TextLoaded += GitIgnoreFileLoaded;
         }
 

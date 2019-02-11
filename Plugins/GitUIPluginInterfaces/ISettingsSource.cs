@@ -133,7 +133,7 @@ namespace GitUIPluginInterfaces
             SetValue(name, value, x => x.ToString());
         }
 
-        public T GetEnum<T>([NotNull] string name, T defaultValue) where T : struct
+        public T GetEnum<T>([NotNull] string name, T defaultValue) where T : struct, Enum
         {
             return GetValue(name, defaultValue, x =>
             {
@@ -148,7 +148,7 @@ namespace GitUIPluginInterfaces
             });
         }
 
-        public void SetNullableEnum<T>([NotNull] string name, T? value) where T : struct
+        public void SetNullableEnum<T>([NotNull] string name, T? value) where T : struct, Enum
         {
             SetValue(name, value, x => x.HasValue ? x.ToString() : string.Empty);
         }
@@ -181,52 +181,6 @@ namespace GitUIPluginInterfaces
         public string GetString([NotNull] string name, string defaultValue)
         {
             return GetValue(name, defaultValue, x => x);
-        }
-    }
-
-    public static class FontParser
-    {
-        private const string InvariantCultureId = "_IC_";
-
-        public static string AsString(this Font value)
-        {
-            return string.Format(CultureInfo.InvariantCulture,
-                "{0};{1};{2}", value.FontFamily.Name, value.Size, InvariantCultureId);
-        }
-
-        public static Font Parse(this string value, Font defaultValue)
-        {
-            if (value == null)
-            {
-                return defaultValue;
-            }
-
-            string[] parts = value.Split(';');
-
-            if (parts.Length < 2)
-            {
-                return defaultValue;
-            }
-
-            try
-            {
-                string fontSize;
-                if (parts.Length == 3 && parts[2] == InvariantCultureId)
-                {
-                    fontSize = parts[1];
-                }
-                else
-                {
-                    fontSize = parts[1].Replace(",", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator);
-                    fontSize = fontSize.Replace(".", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator);
-                }
-
-                return new Font(parts[0], float.Parse(fontSize, CultureInfo.InvariantCulture));
-            }
-            catch (Exception)
-            {
-                return defaultValue;
-            }
         }
     }
 }

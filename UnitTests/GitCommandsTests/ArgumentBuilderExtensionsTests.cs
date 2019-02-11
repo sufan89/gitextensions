@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
+using FluentAssertions;
 using GitCommands;
 using GitCommands.Git;
+using GitUIPluginInterfaces;
 using NUnit.Framework;
 
 namespace GitCommandsTests
@@ -223,6 +226,98 @@ namespace GitCommandsTests
 
                     Assert.DoesNotThrow(() => method.Invoke(null, new object[] { args, member }));
                 }
+            }
+        }
+
+        [Test]
+        public void Handle_artificial_objectid()
+        {
+            Assert.Throws<ArgumentException>(() => new ArgumentBuilder
+            {
+                ObjectId.WorkTreeId
+            });
+            Assert.Throws<ArgumentException>(() => new ArgumentBuilder
+            {
+                ObjectId.IndexId
+            });
+            Assert.Throws<ArgumentException>(() => new ArgumentBuilder
+            {
+                ObjectId.CombinedDiffId
+            });
+        }
+
+        [TestCase(null)]
+        public void Handle_null_objectid(ObjectId id)
+        {
+            var args = new ArgumentBuilder
+            {
+                id
+            };
+            Assert.AreEqual(args.ToString(), "");
+        }
+
+        [Test]
+        public void Add_ForcePushOptions_ensure_all_switches_are_handled()
+        {
+            foreach (int mode in Enum.GetValues(typeof(ForcePushOptions)))
+            {
+                // unimplemented switches will result in InvalidEnumArgumentException
+                var args = new ArgumentBuilder
+                {
+                    (ForcePushOptions)mode
+                };
+            }
+        }
+
+        [Test]
+        public void Add_GitBisectOption_ensure_all_switches_are_handled()
+        {
+            foreach (int mode in Enum.GetValues(typeof(GitBisectOption)))
+            {
+                // unimplemented switches will result in InvalidEnumArgumentException
+                var args = new ArgumentBuilder
+                {
+                    (GitBisectOption)mode
+                };
+            }
+        }
+
+        [Test]
+        public void Add_IgnoreSubmodulesMode_ensure_all_switches_are_handled()
+        {
+            foreach (int mode in Enum.GetValues(typeof(IgnoreSubmodulesMode)))
+            {
+                // unimplemented switches will result in InvalidEnumArgumentException
+                var args = new ArgumentBuilder
+                {
+                    (IgnoreSubmodulesMode)mode
+                };
+            }
+        }
+
+        [Test]
+        public void Add_CleanMode_ensure_all_switches_are_handled()
+        {
+            foreach (int mode in Enum.GetValues(typeof(CleanMode)))
+            {
+                // unimplemented switches will result in InvalidEnumArgumentException
+                var args = new ArgumentBuilder
+                {
+                    (CleanMode)mode
+                };
+            }
+        }
+
+        [Test]
+        public void Add_ResetMode_ensure_all_switches_are_handled()
+        {
+            foreach (int mode in Enum.GetValues(typeof(ResetMode)))
+            {
+                // unimplemented switches will result in InvalidEnumArgumentException
+                var args = new ArgumentBuilder
+                {
+                    (ResetMode)mode
+                };
             }
         }
     }

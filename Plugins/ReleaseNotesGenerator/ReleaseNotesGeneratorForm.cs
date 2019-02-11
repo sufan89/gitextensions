@@ -4,7 +4,9 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Windows.Forms;
+using GitCommands;
 using GitCommands.Utils;
+using GitExtUtils;
 using GitUIPluginInterfaces;
 using ResourceManager;
 
@@ -28,7 +30,7 @@ namespace ReleaseNotesGenerator
         public ReleaseNotesGeneratorForm(GitUIEventArgs gitUiCommands)
         {
             InitializeComponent();
-            Translate();
+            InitializeComplete();
 
             _gitUiCommands = gitUiCommands;
             _gitLogLineParser = new GitLogLineParser();
@@ -58,8 +60,12 @@ namespace ReleaseNotesGenerator
                 return;
             }
 
-            string logArgs = string.Format(_NO_TRANSLATE_textBoxGitLogArguments.Text, textBoxRevFrom.Text, textBoxRevTo.Text);
-            string result = _gitUiCommands.GitModule.RunGitCmd("log " + logArgs);
+            var args = new GitArgumentBuilder("log")
+            {
+                string.Format(_NO_TRANSLATE_textBoxGitLogArguments.Text, textBoxRevFrom.Text, textBoxRevTo.Text)
+            };
+
+            string result = _gitUiCommands.GitModule.GitExecutable.GetOutput(args);
 
             if (EnvUtils.RunningOnWindows())
             {
@@ -87,19 +93,19 @@ namespace ReleaseNotesGenerator
 
         private void buttonCopyOrigOutput_Click(object sender, EventArgs e)
         {
-            Clipboard.SetText(textBoxResult.Text);
+            ClipboardUtil.TrySetText(textBoxResult.Text);
         }
 
         private void buttonCopyAsPlainText_Click(object sender, EventArgs e)
         {
             string result = CreateTextTable(_lastGeneratedLogLines, true, true);
-            Clipboard.SetText(result);
+            ClipboardUtil.TrySetText(result);
         }
 
         private void buttonCopyAsTextTableSpace_Click(object sender, EventArgs e)
         {
             string result = CreateTextTable(_lastGeneratedLogLines, true, false);
-            Clipboard.SetText(result);
+            ClipboardUtil.TrySetText(result);
         }
 
         private void buttonCopyAsHtml_Click(object sender, EventArgs e)

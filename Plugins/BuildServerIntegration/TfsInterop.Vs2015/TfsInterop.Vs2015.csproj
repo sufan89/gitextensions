@@ -44,10 +44,14 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.TeamFoundation.Build.Client" Version="11.0.60610.1" />
     <PackageReference Include="Microsoft.TeamFoundation.Client-final" Version="12.0.21005.1" />
-    <PackageReference Include="Microsoft.TeamFoundationServer.Client" version="15.112.1" />
+    <PackageReference Include="Microsoft.TeamFoundationServer.Client" Version="15.112.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\TfsInterop.Common\Properties\AssemblyInfo.cs" />
+    <Compile Include="..\..\..\CommonAssemblyInfo.cs">
+      <Link>Properties\CommonAssemblyInfo.cs</Link>
+    </Compile>
+    <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TfsHelper2015.cs" />
   </ItemGroup>
   <ItemGroup>

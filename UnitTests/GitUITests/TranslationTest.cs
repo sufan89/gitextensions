@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using GitUI;
 using NUnit.Framework;
@@ -10,39 +10,55 @@ using ResourceManager.Xliff;
 namespace GitUITests
 {
     [TestFixture]
-    public class TranslationTest
+    public sealed class TranslationTest
     {
+        [SetUp]
+        public void SetUp()
+        {
+            GitModuleForm.IsUnitTestActive = true;
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            GitModuleForm.IsUnitTestActive = false;
+        }
+
         [Test]
         [Apartment(ApartmentState.STA)]
         public void CreateInstanceOfClass()
         {
-            // just reference to GitUI
-            MouseWheelRedirector.Active = true;
+            UserEnvironmentInformation.Initialise("0123456789012345678901234567890123456789", isDirty: false);
 
-            var translatableTypes = TranslationUtl.GetTranslatableTypes();
+            var translatableTypes = TranslationUtil.GetTranslatableTypes();
 
-            var testTranslation = new Dictionary<string, TranslationFile>();
+            var problems = new List<(string typeName, Exception exception)>();
 
-            foreach (var (key, types) in translatableTypes)
+            foreach (var types in translatableTypes.Values)
             {
-                var tranlation = new TranslationFile();
-                foreach (Type type in types)
+                var translation = new TranslationFile();
+
+                foreach (var type in types)
                 {
                     try
                     {
-                        var obj = (ITranslate)TranslationUtl.CreateInstanceOfClass(type);
+                        var obj = (ITranslate)TranslationUtil.CreateInstanceOfClass(type);
 
-                        obj.AddTranslationItems(tranlation);
-                        obj.TranslateItems(tranlation);
+                        obj.AddTranslationItems(translation);
+                        obj.TranslateItems(translation);
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
-                        Trace.WriteLine("Problem with class: " + type.FullName);
-                        throw;
+                        problems.Add((type.FullName, ex));
                     }
                 }
+            }
 
-                testTranslation[key] = tranlation;
+            if (problems.Count != 0)
+            {
+                Assert.Fail(string.Join(
+                    "\n\n--------\n\n",
+                    problems.Select(p => $"Problem with type {p.typeName}\n\n{p.exception}")));
             }
         }
     }

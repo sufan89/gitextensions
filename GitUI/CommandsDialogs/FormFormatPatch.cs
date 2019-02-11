@@ -21,9 +21,9 @@ namespace GitUI.CommandsDialogs
             new TranslationString("You need to enter a mail subject.");
         private readonly TranslationString _wrongSmtpSettingsText =
             new TranslationString("You need to enter a valid smtp in the settings dialog.");
-        private readonly TranslationString _twoRevisionsNeededText =
-            new TranslationString("You need to select two revisions");
-        private readonly TranslationString _twoRevisionsNeededCaption =
+        private readonly TranslationString _revisionsNeededText =
+            new TranslationString("You need to select at least one revision");
+        private readonly TranslationString _revisionsNeededCaption =
             new TranslationString("Patch error");
         private readonly TranslationString _sendMailResult =
             new TranslationString("Send to:");
@@ -34,20 +34,20 @@ namespace GitUI.CommandsDialogs
         private readonly TranslationString _noGitMailConfigured =
             new TranslationString("There is no email address configured in the settings dialog.");
 
+        [Obsolete("For VS designer and translation test only. Do not remove.")]
         private FormFormatPatch()
-            : this(null)
         {
+            InitializeComponent();
         }
 
         public FormFormatPatch(GitUICommands commands)
             : base(commands)
         {
             InitializeComponent();
-            Translate();
-            if (commands != null)
-            {
-                MailFrom.Text = Module.GetEffectiveSetting(SettingKeyString.UserEmail);
-            }
+            RevisionGrid.ShowUncommittedChangesIfPossible = false;
+            InitializeComplete();
+
+            MailFrom.Text = Module.GetEffectiveSetting(SettingKeyString.UserEmail);
         }
 
         private void Browse_Click(object sender, EventArgs e)
@@ -132,15 +132,15 @@ namespace GitUI.CommandsDialogs
             {
                 if (revisions.Count == 1)
                 {
-                    var parents = revisions[0].ParentGuids;
-                    rev1 = parents?.Count > 0 ? parents[0] : "";
+                    var parents = revisions[0].ParentIds;
+                    rev1 = parents?.Count > 0 ? parents[0].ToString() : "";
                     rev2 = revisions[0].Guid;
                     result = Module.FormatPatch(rev1, rev2, savePatchesToDir);
                 }
                 else if (revisions.Count == 2)
                 {
-                    var parents = revisions[0].ParentGuids;
-                    rev1 = parents?.Count > 0 ? parents[0] : "";
+                    var parents = revisions[0].ParentIds;
+                    rev1 = parents?.Count > 0 ? parents[0].ToString() : "";
                     rev2 = revisions[1].Guid;
                     result = Module.FormatPatch(rev1, rev2, savePatchesToDir);
                 }
@@ -150,16 +150,16 @@ namespace GitUI.CommandsDialogs
                     foreach (GitRevision revision in revisions)
                     {
                         n++;
-                        var parents = revision.ParentGuids;
-                        rev1 = parents?.Count > 0 ? parents[0] : "";
+                        var parents = revision.ParentIds;
+                        rev1 = parents?.Count > 0 ? parents[0].ToString() : "";
                         rev2 = revision.Guid;
                         result += Module.FormatPatch(rev1, rev2, savePatchesToDir, n);
                     }
                 }
             }
-            else if (string.IsNullOrEmpty(rev1) || string.IsNullOrEmpty(rev2))
+            else
             {
-                MessageBox.Show(this, _twoRevisionsNeededText.Text, _twoRevisionsNeededCaption.Text);
+                MessageBox.Show(this, _revisionsNeededText.Text, _revisionsNeededCaption.Text);
                 return;
             }
 
@@ -206,8 +206,8 @@ namespace GitUI.CommandsDialogs
                 {
                     foreach (string file in Directory.GetFiles(dir, "*.patch"))
                     {
-                        var attacheMent = new Attachment(file);
-                        mail.Attachments.Add(attacheMent);
+                        var attachment = new Attachment(file);
+                        mail.Attachments.Add(attachment);
                     }
 
                     var smtpClient = new SmtpClient(AppSettings.SmtpServer)
