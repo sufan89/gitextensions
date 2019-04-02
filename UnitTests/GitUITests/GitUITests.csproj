@@ -61,12 +61,17 @@
     <Compile Include="Avatars\AvatarPersistentCacheTests.cs" />
     <Compile Include="Avatars\AvatarTestBase.cs" />
     <Compile Include="Avatars\BackupAvatarProviderTests.cs" />
+    <Compile Include="BranchTreePanel\GitRefMenuItemsTest.cs" />
     <Compile Include="CancellationTokenSequenceTests.cs" />
-    <Compile Include="CommandsDialogs\CommitDialog\FormBrowseTests.LeftPanel.cs" />
+    <Compile Include="CommandsDialogs\CommitDialog\FormBrowseTests.LeftPanel.ReorderNodes.cs" />
+    <Compile Include="CommandsDialogs\CommitDialog\FormBrowseTests.LeftPanel.Submodules.cs" />
+    <Compile Include="CommandsDialogs\CommitDialog\FormBrowseTests.LeftPanel.Remotes.cs" />
     <Compile Include="CommandsDialogs\CommitDialog\FormBrowseTests.cs" />
     <Compile Include="CommandsDialogs\CommitDialog\FormPullTests.cs" />
     <Compile Include="CommandsDialogs\CommitDialog\FormInitTests.cs" />
     <Compile Include="CommandsDialogs\CommitDialog\FormCommitTests.cs" />
+    <Compile Include="CommandsDialogs\FileStatusListTests.cs" />
+    <Compile Include="CommandsDialogs\FormEditorTests.cs" />
     <Compile Include="CommandsDialogs\FormFileHistoryControllerTests.cs" />
     <Compile Include="CommandsDialogs\ReferenceRepository.cs" />
     <Compile Include="CommandsDialogs\RevisionDiffContextMenuControllerTests.cs" />
@@ -74,6 +79,7 @@
     <Compile Include="CommandsDialogs\RevisionDiffControllerTests.cs" />
     <Compile Include="ControlThreadingExtensionsTests.cs" />
     <Compile Include="Editor\FileViewerInternal.CurrentViewPositionCacheTests.cs" />
+    <Compile Include="Editor\FileViewerTests.cs" />
     <Compile Include="Editor\FileViewerTextTests.cs" />
     <Compile Include="Editor\RichTextBoxXhtmlSupportExtensionTests.cs" />
     <Compile Include="FindFilePredicateProviderTest.cs" />
@@ -102,6 +108,7 @@
     <Compile Include="UserControls\RevisionGrid\Graph\LaneInfoProviderTests.cs" />
     <Compile Include="UserControls\RevisionGrid\Graph\RevisionGraphMultiThreadingTests.cs" />
     <Compile Include="UserControls\RevisionGrid\Graph\RevisionGraphTests.cs" />
+    <Compile Include="UserControls\SortDiffListContextMenuItemTests.cs" />
     <Compile Include="UserControls\ToolStripPushButtonTests.cs" />
     <Compile Include="UserControls\TreeViewExtensionsTests.cs" />
     <Compile Include="UserManual\SingleHtmlUserManualFixture.cs" />
@@ -155,5 +162,6 @@
     <EmbeddedResource Include="Editor\MockData\UnixLines.bin" />
     <EmbeddedResource Include="Editor\MockData\WindowsLines.bin" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

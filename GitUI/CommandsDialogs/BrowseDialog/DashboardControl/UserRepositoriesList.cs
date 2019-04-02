@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Git;
@@ -33,6 +35,15 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
         private readonly TranslationString _clearRecentCategoryQuestion = new TranslationString(
             "Do you want to clear the list of recent repositories?\n\nThe action cannot be undone.");
 
+        private readonly TranslationString _cannotOpenTheFolder = new TranslationString("Cannot open the folder");
+        private readonly TranslationString _notAValidRepository = new TranslationString("Not a valid git repository");
+
+        private class SelectedRepositoryItem
+        {
+            public bool IsFavourite;
+            public Repository Repository;
+        }
+
         private readonly Font _secondaryFont;
         private static readonly Color DefaultFavouriteColor = Color.DarkGoldenrod;
         private static readonly Color DefaultBranchNameColor = SystemColors.HotTrack;
@@ -50,6 +61,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
         private readonly ListViewGroup _lvgRecentRepositories;
         private readonly IUserRepositoriesListController _controller = new UserRepositoriesListController(RepositoryHistoryManager.Locals);
         private bool _hasInvalidRepos;
+        private ListViewItem _rightClickedItem;
 
         public event EventHandler<GitModuleEventArgs> GitModuleChanged;
 
@@ -78,6 +90,9 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
             imageList1.ImageSize = DpiUtil.Scale(imageList1.ImageSize);
             imageList1.Images.Add(Images.DashboardFolderGit);
             imageList1.Images.Add(Images.DashboardFolderError);
+
+            DragEnter += OnDragEnter;
+            DragDrop += OnDragDrop;
         }
 
         [Category("Appearance")]
@@ -338,14 +353,14 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
         }
 
         [CanBeNull]
-        private static Repository GetSelectedRepository(ToolStripItem menuItem)
+        private static SelectedRepositoryItem GetSelectedRepositoryItem(ToolStripItem menuItem)
         {
             // Retrieve the ContextMenuStrip that owns this ToolStripItem
             var contextMenu = menuItem?.Owner as ContextMenuStrip;
 
             // Get the control that is displaying this context menu
-            var selected = contextMenu?.Tag as Repository;
-            if (string.IsNullOrWhiteSpace(selected?.Path))
+            var selected = contextMenu?.Tag as SelectedRepositoryItem;
+            if (string.IsNullOrWhiteSpace(selected?.Repository?.Path))
             {
                 return null;
             }
@@ -409,9 +424,9 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
             return new Size((int)(width + DpiUtil.Scale(50f)), (int)Math.Max(height, DpiUtil.Scale(50f)));
         }
 
-        private static void RepositoryContextAction(ToolStripItem menuItem, Action<Repository> action)
+        private static void RepositoryContextAction(ToolStripItem menuItem, Action<SelectedRepositoryItem> action)
         {
-            var selected = GetSelectedRepository(menuItem);
+            var selected = GetSelectedRepositoryItem(menuItem);
             if (selected != null)
             {
                 action(selected);
@@ -480,6 +495,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
 
         private void contextMenuStrip_Closed(object sender, ToolStripDropDownClosedEventArgs e)
         {
+            _rightClickedItem = null;
             ShowRecentRepositories();
         }
 
@@ -495,7 +511,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
 
             tsmiRemoveMissingReposFromList.Visible = _hasInvalidRepos;
 
-            if (selected == null)
+            if (selected == null || _rightClickedItem == null)
             {
                 e.Cancel = true;
                 return;
@@ -504,7 +520,11 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
             // address a bug in context menu implementation
             // nested toolstrip items can't get source control
             // http://stackoverflow.com/questions/30534417/
-            contextMenuStripRepository.Tag = selected;
+            contextMenuStripRepository.Tag = new SelectedRepositoryItem
+            {
+                Repository = selected,
+                IsFavourite = _rightClickedItem.Group != _lvgRecentRepositories
+            };
         }
 
         private void listView1_DrawItem(object sender, DrawListViewItemEventArgs e)
@@ -517,7 +537,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
             var textOffset = spacing2 + imageList1.ImageSize.Width + spacing2;
             int textWidth = e.Bounds.Width - (int)textOffset;
 
-            if (e.Item == HoveredItem)
+            if (e.Item == HoveredItem || e.Item.Selected)
             {
                 e.Graphics.FillRectangle(_hoverColorBrush, e.Bounds);
             }
@@ -593,6 +613,18 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
                 }
 
                 OnModuleChanged(new GitModuleEventArgs(new GitModule(selected.Path)));
+            }
+            else if (e.Button == MouseButtons.Right)
+            {
+                // translate the mouse position from screen coordinates to
+                // client coordinates within the given ListView
+                Point localPoint = listView1.PointToClient(Cursor.Position);
+                _rightClickedItem = listView1.GetItemAt(localPoint.X, localPoint.Y);
+
+                if (_rightClickedItem != null)
+                {
+                    _rightClickedItem.Selected = true;
+                }
             }
         }
 
@@ -671,14 +703,14 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
 
             tsmiCategories.DropDownItems.Add(tsmiCategoryAdd);
 
-            RepositoryContextAction(tsmiCategories, repository =>
+            RepositoryContextAction(tsmiCategories, selectedRepositoryItem =>
             {
                 foreach (ToolStripItem item in tsmiCategories.DropDownItems)
                 {
-                    item.Enabled = item.Text != repository.Category;
+                    item.Enabled = item.Text != selectedRepositoryItem.Repository.Category;
                 }
 
-                if (string.IsNullOrWhiteSpace(repository.Category) && tsmiCategories.DropDownItems.Count > 1)
+                if (string.IsNullOrWhiteSpace(selectedRepositoryItem.Repository.Category) && tsmiCategories.DropDownItems.Count > 1)
                 {
                     tsmiCategories.DropDownItems[0].Enabled = false;
                 }
@@ -687,24 +719,24 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
 
         private void tsmiCategory_Click(object sender, EventArgs e)
         {
-            var repository = GetSelectedRepository((sender as ToolStripMenuItem)?.OwnerItem);
-            if (repository == null)
+            var selectedRepositoryItem = GetSelectedRepositoryItem((sender as ToolStripMenuItem)?.OwnerItem);
+            if (selectedRepositoryItem == null)
             {
                 return;
             }
 
             var category = (sender as ToolStripMenuItem)?.Tag as string;
-            ThreadHelper.JoinableTaskFactory.Run(() => _controller.AssignCategoryAsync(repository, category));
+            ThreadHelper.JoinableTaskFactory.Run(() => _controller.AssignCategoryAsync(selectedRepositoryItem.Repository, category));
             ShowRecentRepositories();
         }
 
         private void tsmiCategoryAdd_Click(object sender, EventArgs e)
         {
-            RepositoryContextAction((sender as ToolStripMenuItem)?.OwnerItem, repository =>
+            RepositoryContextAction((sender as ToolStripMenuItem)?.OwnerItem, selectedRepositoryItem =>
             {
                 if (PromptCategoryName(GetCategories(), originalName: null, out string categoryName))
                 {
-                    ThreadHelper.JoinableTaskFactory.Run(() => _controller.AssignCategoryAsync(repository, categoryName));
+                    ThreadHelper.JoinableTaskFactory.Run(() => _controller.AssignCategoryAsync(selectedRepositoryItem.Repository, categoryName));
                     ShowRecentRepositories();
                 }
             });
@@ -714,7 +746,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
         {
             try
             {
-                RepositoryContextAction(sender as ToolStripMenuItem, repository => Process.Start(repository.Path));
+                RepositoryContextAction(sender as ToolStripMenuItem, selectedRepositoryItem => Process.Start(selectedRepositoryItem.Repository.Path));
             }
             catch (Exception ex)
             {
@@ -724,16 +756,29 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
 
         private void tsmiRemoveFromList_Click(object sender, EventArgs e)
         {
-            RepositoryContextAction(sender as ToolStripMenuItem, repository =>
+            RepositoryContextAction(sender as ToolStripMenuItem, selectedRepositoryItem =>
             {
-                ThreadHelper.JoinableTaskFactory.Run(() => RepositoryHistoryManager.Locals.RemoveRecentAsync(repository.Path));
+                ThreadHelper.JoinableTaskFactory.Run(() =>
+                {
+                    Task task;
+                    if (selectedRepositoryItem.IsFavourite)
+                    {
+                        task = RepositoryHistoryManager.Locals.RemoveFavouriteAsync(selectedRepositoryItem.Repository.Path);
+                    }
+                    else
+                    {
+                        task = RepositoryHistoryManager.Locals.RemoveRecentAsync(selectedRepositoryItem.Repository.Path);
+                    }
+
+                    return task;
+                });
                 ShowRecentRepositories();
             });
         }
 
         private void tsmiRemoveMissingReposFromList_Click(object sender, EventArgs e)
         {
-            RepositoryContextAction(sender as ToolStripMenuItem, repository =>
+            RepositoryContextAction(sender as ToolStripMenuItem, selectedRepositoryItem =>
             {
                 ThreadHelper.JoinableTaskFactory.Run(() => RepositoryHistoryManager.Locals.RemoveInvalidRepositoriesAsync(_controller.IsValidGitWorkingDir));
                 ShowRecentRepositories();
@@ -784,6 +829,51 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
             }
 
             ShowRecentRepositories();
+        }
+
+        private void OnDragDrop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetData(DataFormats.FileDrop) is string[] fileNameArray)
+            {
+                if (fileNameArray.Length != 1)
+                {
+                    return;
+                }
+
+                string dir = fileNameArray[0];
+                if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+                {
+                    GitModule module = new GitModule(dir);
+
+                    if (!module.IsValidGitWorkingDir())
+                    {
+                        MessageBox.Show(this, _notAValidRepository.Text,
+                            _cannotOpenTheFolder.Text, MessageBoxButtons.OK,
+                            MessageBoxIcon.Exclamation, MessageBoxDefaultButton.Button1);
+                        return;
+                    }
+
+                    OnModuleChanged(new GitModuleEventArgs(module));
+                }
+            }
+        }
+
+        private void OnDragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetData(DataFormats.FileDrop) is string[] fileNameArray)
+            {
+                if (fileNameArray.Length != 1)
+                {
+                    return;
+                }
+
+                string dir = fileNameArray[0];
+                if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+                {
+                    // Allow drop (copy, not move) folders
+                    e.Effect = DragDropEffects.Copy;
+                }
+            }
         }
     }
 }

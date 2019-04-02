@@ -75,7 +75,6 @@ namespace GitUI.CommandsDialogs
         private readonly TranslationString _pullMerge = new TranslationString("Pull - merge");
         private readonly TranslationString _pullRebase = new TranslationString("Pull - rebase");
         private readonly TranslationString _pullOpenDialog = new TranslationString("Open pull dialog");
-        private readonly TranslationString _pullFetchPruneAllConfirmation = new TranslationString("Warning! The fetch with prune will remove all the remote-tracking references which no longer exist on remotes. Do you want to proceed?");
 
         private readonly TranslationString _buildReportTabCaption = new TranslationString("Build Report");
         private readonly TranslationString _consoleTabCaption = new TranslationString("Console");
@@ -234,7 +233,10 @@ namespace GitUI.CommandsDialogs
             UICommands.BrowseRepo = this;
             _controller = new FormBrowseController(new GitGpgController(() => Module));
             _commitDataManager = new CommitDataManager(() => Module);
-            _submoduleStatusProvider = new SubmoduleStatusProvider();
+
+            _submoduleStatusProvider = SubmoduleStatusProvider.Default;
+            _submoduleStatusProvider.StatusUpdating += SubmoduleStatusProvider_StatusUpdating;
+            _submoduleStatusProvider.StatusUpdated += SubmoduleStatusProvider_StatusUpdated;
 
             FillBuildReport(); // Ensure correct page visibility
             RevisionGrid.ShowBuildServerInfo = true;
@@ -260,6 +262,13 @@ namespace GitUI.CommandsDialogs
             // Scale tool strip items according to DPI
             toolStripBranchFilterComboBox.Size = DpiUtil.Scale(toolStripBranchFilterComboBox.Size);
             toolStripRevisionFilterTextBox.Size = DpiUtil.Scale(toolStripRevisionFilterTextBox.Size);
+
+            foreach (var control in this.FindDescendants())
+            {
+                control.AllowDrop = true;
+                control.DragEnter += FormBrowse_DragEnter;
+                control.DragDrop += FormBrowse_DragDrop;
+            }
 
             if (selectCommit != null)
             {
@@ -454,7 +463,6 @@ namespace GitUI.CommandsDialogs
             {
                 // ReSharper disable ConstantConditionalAccessQualifier - these can be null if run from under the TranslatioApp
 
-                _submoduleStatusProvider?.Dispose();
                 _formBrowseMenus?.Dispose();
                 _filterRevisionsHelper?.Dispose();
                 _filterBranchHelper?.Dispose();
@@ -518,6 +526,12 @@ namespace GitUI.CommandsDialogs
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             SaveApplicationSettings();
+            foreach (var control in this.FindDescendants())
+            {
+                control.DragEnter -= FormBrowse_DragEnter;
+                control.DragDrop -= FormBrowse_DragDrop;
+            }
+
             base.OnFormClosing(e);
         }
 
@@ -898,7 +912,7 @@ namespace GitUI.CommandsDialogs
 
                     button.Click += delegate
                     {
-                        if (ScriptRunner.RunScript(this, Module, script.Name, RevisionGrid))
+                        if (ScriptRunner.RunScript(this, Module, script.Name, UICommands, RevisionGrid).NeedsGridRefresh)
                         {
                             RevisionGrid.RefreshRevisions();
                         }
@@ -1307,9 +1321,8 @@ namespace GitUI.CommandsDialogs
 
         private void RefreshToolStripMenuItemClick(object sender, EventArgs e)
         {
-            RefreshRevisions();
-            RefreshStatus();
-            repoObjectsTree.RefreshTree();
+            // Broadcast RepoChanged in case repo was changed outside of GE
+            UICommands.RepoChangedNotifier.Notify();
         }
 
         private void RefreshDashboardToolStripMenuItemClick(object sender, EventArgs e)
@@ -1434,7 +1447,7 @@ namespace GitUI.CommandsDialogs
 
             _dashboard?.RefreshContent();
 
-            _gitStatusMonitor.Active = NeedsGitStatusMonitor();
+            _gitStatusMonitor.Active = NeedsGitStatusMonitor() && Module.IsValidGitWorkingDir();
         }
 
         private void TagToolStripMenuItemClick(object sender, EventArgs e)
@@ -2046,7 +2059,7 @@ namespace GitUI.CommandsDialogs
                 IEnumerable<string> GetBranchNames()
                 {
                     // Make sure there are never more than a 100 branches added to the menu
-                    // GitExtensions will hang when the drop down is too large...
+                    // Git Extensions will hang when the drop down is too large...
                     return Module
                         .GetRefs(tags: false, branches: true, noLocks: true)
                         .Select(b => b.Name)
@@ -2141,7 +2154,14 @@ namespace GitUI.CommandsDialogs
 
         private void AddNotes()
         {
-            Module.EditNotes(RevisionGrid.GetSelectedRevisions().FirstOrDefault()?.ObjectId);
+            var objectId = RevisionGrid.GetSelectedRevisions().FirstOrDefault()?.ObjectId;
+
+            if (objectId == null || objectId.IsArtificial)
+            {
+                return;
+            }
+
+            Module.EditNotes(objectId);
             FillCommitInfo();
         }
 
@@ -2167,7 +2187,7 @@ namespace GitUI.CommandsDialogs
             UICommands.RepoChangedNotifier.Notify();
         }
 
-        protected override bool ExecuteCommand(int cmd)
+        protected override CommandStatus ExecuteCommand(int cmd)
         {
             switch ((Command)cmd)
             {
@@ -2190,7 +2210,7 @@ namespace GitUI.CommandsDialogs
                 case Command.FindFileInSelectedCommit: FindFileInSelectedCommit(); break;
                 case Command.CheckoutBranch: CheckoutBranchToolStripMenuItemClick(null, null); break;
                 case Command.QuickFetch: QuickFetch(); break;
-                case Command.QuickPull: ToolStripButtonPullClick(null, null); break;
+                case Command.QuickPull: mergeToolStripMenuItem_Click(null, null); break;
                 case Command.QuickPush: UICommands.StartPushDialog(this, true); break;
                 case Command.CloseRepository: CloseToolStripMenuItemClick(null, null); break;
                 case Command.Stash: UICommands.StashSave(this, AppSettings.IncludeUntrackedFilesInManualStash); break;
@@ -2286,7 +2306,7 @@ namespace GitUI.CommandsDialogs
             }
         }
 
-        internal bool ExecuteCommand(Command cmd)
+        internal CommandStatus ExecuteCommand(Command cmd)
         {
             return ExecuteCommand((int)cmd);
         }
@@ -2407,23 +2427,6 @@ namespace GitUI.CommandsDialogs
 
         private void DoPull(AppSettings.PullAction pullAction, bool isSilent)
         {
-            // Special case for FetchPruneAll to make sure user confirms the action.
-            // Notice, if action is not silent, we just show a regular Pull dialog without any confirmations.
-            if (isSilent && pullAction == AppSettings.PullAction.FetchPruneAll)
-            {
-                bool isActionConfirmed = AppSettings.DontConfirmFetchAndPruneAll
-                                         || MessageBox.Show(
-                                             this,
-                                             _pullFetchPruneAllConfirmation.Text,
-                                             _pullFetchPruneAll.Text,
-                                             MessageBoxButtons.YesNo) == DialogResult.Yes;
-
-                if (!isActionConfirmed)
-                {
-                    return;
-                }
-            }
-
             if (isSilent)
             {
                 UICommands.StartPullDialogAndPullImmediately(this, pullAction: pullAction);
@@ -2638,15 +2641,25 @@ namespace GitUI.CommandsDialogs
             updateStatus = updateStatus || (AppSettings.ShowSubmoduleStatus && _gitStatusMonitor.Active && (Module.SuperprojectModule != null));
 
             toolStripButtonLevelUp.ToolTipText = "";
-            _submoduleStatusProvider.UpdateSubmodulesStatus(
-                updateStatus,
-                Module.WorkingDir, _noBranchTitle.Text,
-                () =>
-                {
-                    RemoveSubmoduleButtons();
-                    toolStripButtonLevelUp.DropDownItems.Add(_loading.Text);
-                },
-                PopulateToolbarAsync);
+            _submoduleStatusProvider.UpdateSubmodulesStatus(updateStatus, Module.WorkingDir, _noBranchTitle.Text);
+        }
+
+        private void SubmoduleStatusProvider_StatusUpdating(object sender, EventArgs e)
+        {
+            ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+            {
+                await this.SwitchToMainThreadAsync();
+                RemoveSubmoduleButtons();
+                toolStripButtonLevelUp.DropDownItems.Add(_loading.Text);
+            }).FileAndForget();
+        }
+
+        private void SubmoduleStatusProvider_StatusUpdated(object sender, SubmoduleStatusEventArgs e)
+        {
+            ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+            {
+                await PopulateToolbarAsync(e.Info, e.Token);
+            }).FileAndForget();
         }
 
         private async Task PopulateToolbarAsync(SubmoduleInfoResult result, CancellationToken cancelToken)
@@ -3107,14 +3120,53 @@ namespace GitUI.CommandsDialogs
             public TestAccessor(FormBrowse form)
             {
                 _form = form;
-                RepoObjectsTree = _form.repoObjectsTree;
             }
 
-            public RepoObjectsTree RepoObjectsTree { get; }
+            public RepoObjectsTree RepoObjectsTree => _form.repoObjectsTree;
 
-            public void PopulateFavouriteRepositoriesMenu(ToolStripDropDownItem container, in IList<Repository> repositoryHistory)
+            public void PopulateFavouriteRepositoriesMenu(ToolStripDropDownItem container, IList<Repository> repositoryHistory)
             {
                 _form.PopulateFavouriteRepositoriesMenu(container, repositoryHistory);
+            }
+        }
+
+        private void FormBrowse_DragDrop(object sender, DragEventArgs e)
+        {
+            CommitInfoTabControl.SelectedTab = TreeTabPage;
+            HandleDrop(e);
+        }
+
+        private void HandleDrop(DragEventArgs e)
+        {
+            var itemPath = (e.Data.GetData(DataFormats.Text) ?? e.Data.GetData(DataFormats.UnicodeText)) as string;
+            if (itemPath != null && (File.Exists(itemPath) || Directory.Exists(itemPath)))
+            {
+                fileTree.SelectFileOrFolder(itemPath);
+                return;
+            }
+
+            var paths = e.Data.GetData(DataFormats.FileDrop) as string[];
+            if (paths == null)
+            {
+                return;
+            }
+
+            foreach (string path in paths)
+            {
+                if (fileTree.SelectFileOrFolder(path))
+                {
+                    return;
+                }
+            }
+        }
+
+        private void FormBrowse_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop)
+                || e.Data.GetDataPresent(DataFormats.Text)
+                || e.Data.GetDataPresent(DataFormats.UnicodeText))
+            {
+                e.Effect = DragDropEffects.Move;
             }
         }
     }

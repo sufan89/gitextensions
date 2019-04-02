@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -84,6 +84,18 @@
     <Compile Include="Avatars\AvatarService.cs" />
     <Compile Include="Avatars\BackupAvatarProvider.cs" />
     <Compile Include="Avatars\IAvatarProvider.cs" />
+    <Compile Include="BranchTreePanel\ContextMenu\LocalBranchMenuItems.cs" />
+    <Compile Include="BranchTreePanel\ContextMenu\MenuItemsStrings.cs" />
+    <Compile Include="BranchTreePanel\ContextMenu\RemoteBranchMenuItems.cs" />
+    <Compile Include="BranchTreePanel\ContextMenu\TagMenuItems.cs" />
+    <Compile Include="BranchTreePanel\Interfaces\ICanDelete.cs" />
+    <Compile Include="BranchTreePanel\Interfaces\ICanRename.cs" />
+    <Compile Include="BranchTreePanel\Interfaces\IGitRefActions.cs" />
+    <Compile Include="BranchTreePanel\ContextMenu\IMenuItemFactory.cs" />
+    <Compile Include="BranchTreePanel\ContextMenu\IMenuItemsGenerator.cs" />
+    <Compile Include="BranchTreePanel\Interfaces\INode.cs" />
+    <Compile Include="BranchTreePanel\ContextMenu\MenuItemKey.cs" />
+    <Compile Include="BranchTreePanel\ContextMenu\MenuItemsGenerator.cs" />
     <Compile Include="BranchTreePanel\RepoObjectsTree.ContextActions.cs">
       <SubType>UserControl</SubType>
       <DependentUpon>RepoObjectsTree.cs</DependentUpon>
@@ -96,6 +108,10 @@
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="BranchTreePanel\RepoObjectsTree.Nodes.Remotes.cs">
+      <SubType>UserControl</SubType>
+      <DependentUpon>RepoObjectsTree.Nodes.cs</DependentUpon>
+    </Compile>
+    <Compile Include="BranchTreePanel\RepoObjectsTree.Nodes.Submodules.cs">
       <SubType>UserControl</SubType>
       <DependentUpon>RepoObjectsTree.Nodes.cs</DependentUpon>
     </Compile>
@@ -399,6 +415,7 @@
     <Compile Include="TaskbarProgress.cs" />
     <Compile Include="UserControls\GitItemStatusWithParent.cs" />
     <Compile Include="UserControls\NativeTreeViewDoubleClickDecorator.cs" />
+    <Compile Include="UserControls\NativeTreeViewExplorerNavigationDecorator.cs" />
     <Compile Include="UserControls\RevisionGrid\CellStyle.cs" />
     <Compile Include="UserControls\ListViewGroupHitInfo.cs" />
     <Compile Include="UserControls\RevisionGrid\Graph\LaneInfoProvider.cs" />
@@ -514,6 +531,9 @@
     <Compile Include="UserControls\RevisionGrid\RevisionGridRefRenderer.cs" />
     <Compile Include="UserControls\RevisionGrid\SuperProjectInfo.cs" />
     <Compile Include="UserControls\RevisionGrid\VisibleRowRange.cs" />
+    <Compile Include="UserControls\SortDiffListContextMenuItem.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="UserControls\TextEventArgs.cs" />
     <Compile Include="UserControls\RepoStateVisualiser.cs" />
     <Compile Include="CommandsDialogs\BrowseDialog\GitStatusMonitor.cs" />
@@ -830,6 +850,9 @@
     </Compile>
     <Compile Include="CommandsDialogs\SettingsDialog\SettingsPageBase.cs">
       <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="CommandsDialogs\SettingsDialog\SettingsPageBase.Designer.cs">
+      <DependentUpon>SettingsPageBase.cs</DependentUpon>
     </Compile>
     <Compile Include="CommandsDialogs\SettingsDialog\SettingsPageReference.cs" />
     <Compile Include="CommandsDialogs\SettingsDialog\SettingsTreeViewUserControl.cs">
@@ -1828,6 +1851,13 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\Icons\DocumentTree.png" />
+    <None Include="Resources\Icons\pullRequest.png" />
+    <None Include="Resources\Icons\information.png" />
+    <None Include="Resources\Icons\RecentRepositories.png" />
+    <None Include="Resources\Icons\CopyToClipboard.png" />
+    <None Include="Resources\Icons\CommitId.png" />
+    <None Include="Resources\Icons\CommitSummary.png" />
+    <None Include="Resources\Icons\Message.png" />
     <Content Include="Translation\Czech.gif">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

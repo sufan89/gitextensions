@@ -93,7 +93,7 @@ namespace GitCommands
                     }
                 }
 
-                if (!string.IsNullOrEmpty(superprojectPath) && currentPath.StartsWith(superprojectPath))
+                if (!string.IsNullOrEmpty(superprojectPath) && currentPath.ToPosixPath().StartsWith(superprojectPath.ToPosixPath()))
                 {
                     var submodulePath = currentPath.Substring(superprojectPath.Length).ToPosixPath();
                     var configFile = new ConfigFile(Path.Combine(superprojectPath, ".gitmodules"), local: true);
@@ -158,8 +158,25 @@ namespace GitCommands
         /// <summary>
         /// If this module is a submodule, returns its superproject <see cref="GitModule"/>, otherwise <c>null</c>.
         /// </summary>
+        /// TODO: Add to IGitModule and return IGitModule
         [CanBeNull]
         public GitModule SuperprojectModule { get; }
+
+        /// <summary>
+        /// If this module is a submodule, returns the top-most parent module, otherwise it returns itself.
+        /// </summary>
+        /// TODO: Add to IGitModule and return IGitModule
+        [NotNull]
+        public GitModule GetTopModule()
+        {
+            GitModule topModule = this;
+            while (topModule.SuperprojectModule != null)
+            {
+                topModule = topModule.SuperprojectModule;
+            }
+
+            return topModule;
+        }
 
         private RepoDistSettings _effectiveSettings;
 
@@ -306,7 +323,7 @@ namespace GitCommands
         /// <summary>
         /// Asks git to resolve the given relativePath
         /// git special folders are located in different directories depending on the kind of repo: submodule, worktree, main
-        /// See https://git-scm.com/docs/git-rev-parse#git-rev-parse---git-pathltpathgt
+        /// See https://git-scm.com/docs/git-rev-parse#Documentation/git-rev-parse.txt---git-pathltpathgt
         /// </summary>
         /// <param name="relativePath">A path relative to the .git directory</param>
         public string ResolveGitInternalPath(string relativePath)
@@ -333,7 +350,7 @@ namespace GitCommands
 
         /// <summary>
         /// Returns git common directory
-        /// https://git-scm.com/docs/git-rev-parse#git-rev-parse---git-common-dir
+        /// https://git-scm.com/docs/git-rev-parse#Documentation/git-rev-parse.txt---git-common-dir
         /// </summary>
         public string GitCommonDirectory
         {
@@ -413,10 +430,10 @@ namespace GitCommands
         public IReadOnlyList<string> GetSubmodulesLocalPaths(bool recursive = true)
         {
             var localPaths = new List<string>();
-            DoGetSubmodulesLocalPaths(this, "", ref localPaths, recursive);
+            DoGetSubmodulesLocalPaths(this, "", localPaths, recursive);
             return localPaths;
 
-            void DoGetSubmodulesLocalPaths(GitModule module, string parentPath, ref List<string> paths, bool recurse)
+            void DoGetSubmodulesLocalPaths(GitModule module, string parentPath, List<string> paths, bool recurse)
             {
                 var submodulePaths = GetSubmodulePaths(module)
                     .Select(p => Path.Combine(parentPath, p).ToPosixPath())
@@ -428,7 +445,7 @@ namespace GitCommands
                 {
                     foreach (var submodulePath in submodulePaths)
                     {
-                        DoGetSubmodulesLocalPaths(GetSubmodule(submodulePath), submodulePath, ref paths, recurse);
+                        DoGetSubmodulesLocalPaths(GetSubmodule(submodulePath), submodulePath, paths, recurse);
                     }
                 }
             }
@@ -1184,7 +1201,7 @@ namespace GitCommands
             {
                 "status",
                 "--cached",
-                SubmodulePath
+                SubmodulePath.Quote()
             };
             var lines = SuperprojectModule.GitExecutable.GetOutput(args).Split('\n');
 
@@ -2166,6 +2183,12 @@ namespace GitCommands
                     {
                         var fetchLine = enumerator.Current;
 
+                        // An invalid module is not an error; we simply return an empty list of remotes
+                        if (fetchLine.Contains("not a git repository"))
+                        {
+                            return remotes;
+                        }
+
                         if (!enumerator.MoveNext())
                         {
                             throw new Exception("Remote URLs should appear in pairs.");
@@ -2292,7 +2315,7 @@ namespace GitCommands
                 cache: cache,
                 outputEncoding: LosslessEncoding);
 
-            var patches = PatchProcessor.CreatePatchesFromString(patch, encoding).ToList();
+            var patches = PatchProcessor.CreatePatchesFromString(patch, new Lazy<Encoding>(() => encoding)).ToList();
 
             return GetPatch(patches, fileName, oldFileName);
         }
@@ -2576,7 +2599,7 @@ namespace GitCommands
         }
 
         internal GitArgumentBuilder GetCurrentChangesCmd(string fileName, [CanBeNull] string oldFileName, bool staged,
-            string extraDiffArguments, Encoding encoding, bool noLocks)
+            string extraDiffArguments, bool noLocks)
         {
             return new GitArgumentBuilder("diff", gitOptions:
                     noLocks && GitVersion.Current.SupportNoOptionalLocks
@@ -2594,12 +2617,12 @@ namespace GitCommands
         }
 
         [CanBeNull]
-        public Patch GetCurrentChanges(string fileName, [CanBeNull] string oldFileName, bool staged, string extraDiffArguments, Encoding encoding, bool noLocks = false)
+        public Patch GetCurrentChanges(string fileName, [CanBeNull] string oldFileName, bool staged, string extraDiffArguments, Encoding encoding = null, bool noLocks = false)
         {
-            var output = _gitExecutable.GetOutput(GetCurrentChangesCmd(fileName, oldFileName, staged, extraDiffArguments, encoding, noLocks),
+            var output = _gitExecutable.GetOutput(GetCurrentChangesCmd(fileName, oldFileName, staged, extraDiffArguments, noLocks),
                 outputEncoding: LosslessEncoding);
 
-            var patches = PatchProcessor.CreatePatchesFromString(output, encoding).ToList();
+            IReadOnlyList<Patch> patches = PatchProcessor.CreatePatchesFromString(output, new Lazy<Encoding>(() => encoding ?? FilesEncoding)).ToList();
 
             return GetPatch(patches, fileName, oldFileName);
         }
@@ -3932,7 +3955,7 @@ namespace GitCommands
                 return "";
             }
 
-            var patches = PatchProcessor.CreatePatchesFromString(patch, encoding).ToList();
+            var patches = PatchProcessor.CreatePatchesFromString(patch, new Lazy<Encoding>(() => encoding)).ToList();
 
             return GetPatch(patches, filePath, filePath)?.Text;
         }

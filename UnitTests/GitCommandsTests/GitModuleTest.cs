@@ -504,6 +504,42 @@ namespace GitCommandsTests
             }
         }
 
+        [Test]
+        public void GetSuperprojectCurrentCheckout()
+        {
+            // Create super and sub repo
+            using (CommonTestUtils.GitModuleTestHelper moduleTestHelperSuper = new CommonTestUtils.GitModuleTestHelper("super repo"),
+                                                       moduleTestHelperSub = new CommonTestUtils.GitModuleTestHelper("sub repo"))
+            {
+                // Inital commit in super project
+                moduleTestHelperSuper.Module.GitExecutable.GetOutput(@"commit --allow-empty -m ""Initial commit""");
+
+                // Submodules require at least one commit
+                moduleTestHelperSub.Module.GitExecutable.GetOutput(@"commit --allow-empty -m ""Empty commit""");
+
+                // Add submodule
+                moduleTestHelperSuper.Module.GitExecutable.GetOutput(GitCommandHelpers.AddSubmoduleCmd(moduleTestHelperSub.Module.WorkingDir.ToPosixPath(), "sub repo", null, true));
+                moduleTestHelperSuper.Module.GitExecutable.GetOutput(@"commit -am ""Add submodule""");
+                GitModule moduleSub = new GitModule(Path.Combine(moduleTestHelperSuper.Module.WorkingDir, "sub repo").ToPosixPath());
+
+                // Init submodule
+                moduleTestHelperSuper.Module.GitExecutable.GetOutput(@"submodule update --init --recursive");
+
+                // Commit in submodule
+                moduleSub.GitExecutable.GetOutput(@"commit --allow-empty -am ""First commit""");
+                string commitRef = moduleSub.GitExecutable.GetOutput("show HEAD").Split('\n')[0].Split(' ')[1];
+
+                // Update ref in superproject
+                moduleTestHelperSuper.Module.GitExecutable.GetOutput(@"add ""sub repo""");
+                moduleTestHelperSuper.Module.GitExecutable.GetOutput(@"commit -am ""Update submodule ref""");
+
+                // Assert
+                (char code, ObjectId commitId) = moduleSub.GetSuperprojectCurrentCheckout();
+                Assert.AreEqual(32, code);
+                Assert.AreEqual(commitRef, commitId.ToString());
+            }
+        }
+
         [TestCase(false, @"stash list")]
         [TestCase(true, @"--no-optional-locks stash list")]
         public void GetStashesCmd(bool noLocks, string expected)
@@ -511,14 +547,14 @@ namespace GitCommandsTests
             Assert.AreEqual(expected, _gitModule.GetStashesCmd(noLocks).ToString());
         }
 
-        [TestCase(@"-c diff.submodule=short -c diff.noprefix=false diff --no-color -M -C --cached extra -- ""new"" ""old""", "new", "old", true, "extra", null, false)]
-        [TestCase(@"-c diff.submodule=short -c diff.noprefix=false diff --no-color extra -- ""new""", "new", "old", false, "extra", null, false)]
-        [TestCase(@"--no-optional-locks -c diff.submodule=short -c diff.noprefix=false diff --no-color -M -C --cached extra -- ""new"" ""old""", "new", "old", true, "extra", null, true)]
+        [TestCase(@"-c diff.submodule=short -c diff.noprefix=false diff --no-color -M -C --cached extra -- ""new"" ""old""", "new", "old", true, "extra", false)]
+        [TestCase(@"-c diff.submodule=short -c diff.noprefix=false diff --no-color extra -- ""new""", "new", "old", false, "extra", false)]
+        [TestCase(@"--no-optional-locks -c diff.submodule=short -c diff.noprefix=false diff --no-color -M -C --cached extra -- ""new"" ""old""", "new", "old", true, "extra", true)]
         public void GetCurrentChangesCmd(string expected, string fileName, [CanBeNull] string oldFileName, bool staged,
-            string extraDiffArguments, Encoding encoding, bool noLocks)
+            string extraDiffArguments, bool noLocks)
         {
             Assert.AreEqual(expected, _gitModule.GetCurrentChangesCmd(fileName, oldFileName, staged,
-                extraDiffArguments, encoding, noLocks).ToString());
+                extraDiffArguments, noLocks).ToString());
         }
 
         [TestCase(@"for-each-ref --sort=-committerdate --format=""%(objectname) %(refname)"" refs/heads/", false)]

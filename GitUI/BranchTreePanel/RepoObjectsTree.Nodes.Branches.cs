@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands.Git;
+using GitUI.BranchTreePanel.Interfaces;
 using GitUI.Properties;
 using JetBrains.Annotations;
 using Microsoft.VisualStudio.Threading;
@@ -59,8 +60,18 @@ namespace GitUI.BranchTreePanel
                 AheadBehind = aheadBehindData;
             }
 
+            public bool Rebase()
+            {
+                return UICommands.StartRebaseDialog(TreeViewNode.TreeView, FullPath);
+            }
+
+            public bool Reset()
+            {
+                return UICommands.StartResetCurrentBranchDialog(TreeViewNode.TreeView, FullPath);
+            }
+
             [CanBeNull]
-            internal BaseBranchNode CreateRootNode(IDictionary<string, BaseBranchNode> nodes,
+            internal BaseBranchNode CreateRootNode(IDictionary<string, BaseBranchNode> pathToNode,
                 Func<Tree, string, BaseBranchNode> createPathNode)
             {
                 if (string.IsNullOrEmpty(ParentPath))
@@ -70,15 +81,15 @@ namespace GitUI.BranchTreePanel
 
                 BaseBranchNode result;
 
-                if (nodes.TryGetValue(ParentPath, out var parent))
+                if (pathToNode.TryGetValue(ParentPath, out var parent))
                 {
                     result = null;
                 }
                 else
                 {
                     parent = createPathNode(Tree, ParentPath);
-                    nodes.Add(ParentPath, parent);
-                    result = parent.CreateRootNode(nodes, createPathNode);
+                    pathToNode.Add(ParentPath, parent);
+                    result = parent.CreateRootNode(pathToNode, createPathNode);
                 }
 
                 parent.Nodes.AddNode(this);
@@ -86,7 +97,7 @@ namespace GitUI.BranchTreePanel
                 return result;
             }
 
-            public override string DisplayText()
+            protected override string DisplayText()
             {
                 return string.IsNullOrEmpty(AheadBehind) ? Name : $"{Name} ({AheadBehind})";
             }
@@ -101,7 +112,7 @@ namespace GitUI.BranchTreePanel
             }
         }
 
-        private sealed class LocalBranchNode : BaseBranchNode
+        private sealed class LocalBranchNode : BaseBranchNode, IGitRefActions, ICanRename, ICanDelete
         {
             public LocalBranchNode(Tree tree, string fullPath, bool isCurrent)
                 : base(tree, fullPath)
@@ -144,14 +155,29 @@ namespace GitUI.BranchTreePanel
                 SelectRevision();
             }
 
-            public void Checkout()
+            public bool Checkout()
             {
-                UICommands.StartCheckoutBranch(FullPath, false);
+                return UICommands.StartCheckoutBranch(FullPath, false);
             }
 
-            public void Delete()
+            public bool CreateBranch()
             {
-                UICommands.StartDeleteBranchDialog(ParentWindow(), FullPath);
+                return UICommands.StartCreateBranchDialog(TreeViewNode.TreeView, FullPath);
+            }
+
+            public bool Merge()
+            {
+                return UICommands.StartMergeBranchDialog(TreeViewNode.TreeView, FullPath);
+            }
+
+            public bool Delete()
+            {
+                return UICommands.StartDeleteBranchDialog(ParentWindow(), FullPath);
+            }
+
+            public bool Rename()
+            {
+                return UICommands.StartRenameDialog(TreeViewNode.TreeView, FullPath);
             }
         }
 
@@ -197,21 +223,26 @@ namespace GitUI.BranchTreePanel
                 _aheadBehindDataProvider = aheadBehindDataProvider;
             }
 
-            public override void RefreshTree()
+            protected override Task OnAttachedAsync()
             {
-                ReloadNodes(LoadNodesAsync);
+                return ReloadNodesAsync(LoadNodesAsync);
             }
 
-            private async Task LoadNodesAsync(CancellationToken token)
+            protected override Task PostRepositoryChangedAsync()
+            {
+                return ReloadNodesAsync(LoadNodesAsync);
+            }
+
+            private async Task<Nodes> LoadNodesAsync(CancellationToken token)
             {
                 await TaskScheduler.Default;
                 token.ThrowIfCancellationRequested();
 
                 var branchNames = Module.GetRefs(tags: false, branches: true, noLocks: true).Select(b => b.Name);
-                FillBranchTree(branchNames, token);
+                return FillBranchTree(branchNames, token);
             }
 
-            private void FillBranchTree(IEnumerable<string> branches, CancellationToken token)
+            private Nodes FillBranchTree(IEnumerable<string> branches, CancellationToken token)
             {
                 #region ex
 
@@ -243,10 +274,11 @@ namespace GitUI.BranchTreePanel
 
                 #endregion
 
+                var nodes = new Nodes(this);
                 var aheadBehindData = _aheadBehindDataProvider?.GetData();
 
                 var currentBranch = Module.GetSelectedBranch();
-                var nodes = new Dictionary<string, BaseBranchNode>();
+                var pathToNode = new Dictionary<string, BaseBranchNode>();
                 foreach (var branch in branches)
                 {
                     token.ThrowIfCancellationRequested();
@@ -257,12 +289,14 @@ namespace GitUI.BranchTreePanel
                         localBranchNode.UpdateAheadBehind(aheadBehindData[localBranchNode.FullPath].ToDisplay());
                     }
 
-                    var parent = localBranchNode.CreateRootNode(nodes, (tree, parentPath) => new BranchPathNode(tree, parentPath));
+                    var parent = localBranchNode.CreateRootNode(pathToNode, (tree, parentPath) => new BranchPathNode(tree, parentPath));
                     if (parent != null)
                     {
-                        Nodes.AddNode(parent);
+                        nodes.AddNode(parent);
                     }
                 }
+
+                return nodes;
             }
 
             protected override void PostFillTreeViewNode(bool firstTime)
@@ -272,7 +306,6 @@ namespace GitUI.BranchTreePanel
                     TreeViewNode.Expand();
                 }
 
-                TreeViewNode.Text = $@"{Strings.Branches} ({Nodes.Count})";
                 var activeBranch = Nodes.DepthEnumerator<LocalBranchNode>().FirstOrDefault(b => b.IsActive);
                 TreeViewNode.TreeView.SelectedNode = activeBranch?.TreeViewNode;
             }

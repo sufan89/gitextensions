@@ -556,6 +556,10 @@ Please make sure git (Git for Windows or cygwin) is installed or set the correct
   </file>
   <file datatype="plaintext" original="ColorsSettingsPage" source-language="en">
     <body>
+      <trans-unit id="$this.Text">
+        <source>Colors</source>
+        <target />
+      </trans-unit>
       <trans-unit id="DrawNonRelativesGray.Text">
         <source>Draw non relatives graph gray</source>
         <target />
@@ -830,7 +834,7 @@ Please make sure git (Git for Windows or cygwin) is installed or set the correct
         <target />
       </trans-unit>
       <trans-unit id="chkFetchAndPruneAllConfirmation.Text">
-        <source>Fetch and prune all</source>
+        <source>Fetch and prune branches</source>
         <target />
       </trans-unit>
       <trans-unit id="chkPushNewBranch.Text">
@@ -1218,11 +1222,19 @@ Please make sure git (Git for Windows or cygwin) is installed or set the correct
         <target />
       </trans-unit>
       <trans-unit id="ignoreWhiteSpaces.ToolTipText">
-        <source>Ignore leading and trailing whitespace changes</source>
+        <source>Ignore changes in amount of whitespace</source>
+        <target />
+      </trans-unit>
+      <trans-unit id="ignoreWhitespaceAtEol.ToolTipText">
+        <source>Ignore whitespace changes at end of line</source>
+        <target />
+      </trans-unit>
+      <trans-unit id="ignoreWhitespaceAtEolToolStripMenuItem.Text">
+        <source>Ignore whitespace changes at end of line</source>
         <target />
       </trans-unit>
       <trans-unit id="ignoreWhitespaceChangesToolStripMenuItem.Text">
-        <source>Ignore leading and trailing whitespace changes</source>
+        <source>Ignore changes in amount of whitespace</source>
         <target />
       </trans-unit>
       <trans-unit id="increaseNumberOfLines.ToolTipText">
@@ -2002,10 +2014,6 @@ compare with first:</source>
         <source>Fetch and prune all</source>
         <target />
       </trans-unit>
-      <trans-unit id="_pullFetchPruneAllConfirmation.Text">
-        <source>Warning! The fetch with prune will remove all the remote-tracking references which no longer exist on remotes. Do you want to proceed?</source>
-        <target />
-      </trans-unit>
       <trans-unit id="_pullMerge.Text">
         <source>Pull - merge</source>
         <target />
@@ -2257,7 +2265,7 @@ Do you want to continue?</source>
         <target />
       </trans-unit>
       <trans-unit id="manageSubmodulesToolStripMenuItem.Text">
-        <source>Submodules...</source>
+        <source>Manage submodules...</source>
         <target />
       </trans-unit>
       <trans-unit id="manageWorktreeToolStripMenuItem.Text">
@@ -2766,6 +2774,10 @@ revision:</source>
         <source>Clean working directory</source>
         <target />
       </trans-unit>
+      <trans-unit id="AddPath.Text">
+        <source>Add a path...</source>
+        <target />
+      </trans-unit>
       <trans-unit id="Cancel.Text">
         <source>Cancel</source>
         <target />
@@ -3198,6 +3210,10 @@ Suitable for some config files modified locally.</source>
         <source>Stage selected line(s)</source>
         <target />
       </trans-unit>
+      <trans-unit id="_statusBarBranchWithoutRemote.Text">
+        <source>(remote not configured)</source>
+        <target />
+      </trans-unit>
       <trans-unit id="_stopTrackingFail.Text">
         <source>Fail to stop tracking the file '{0}'.</source>
         <target />
@@ -3221,6 +3237,10 @@ You can unset the template:
       </trans-unit>
       <trans-unit id="_unstageSelectedLines.Text">
         <source>Unstage selected line(s)</source>
+        <target />
+      </trans-unit>
+      <trans-unit id="_untrackedRemote.Text">
+        <source>(untracked)</source>
         <target />
       </trans-unit>
       <trans-unit id="addFileToGitIgnoreToolStripMenuItem.Text">
@@ -3361,6 +3381,10 @@ You can unset the template:
       </trans-unit>
       <trans-unit id="refreshDialogOnFormFocusToolStripMenuItem.Text">
         <source>Refresh dialog on form focus</source>
+        <target />
+      </trans-unit>
+      <trans-unit id="remoteNameLabel.Text">
+        <source>(Remote name)</source>
         <target />
       </trans-unit>
       <trans-unit id="resetAllTrackedChangesToolStripMenuItem.Text">
@@ -4961,6 +4985,14 @@ Are you sure you want to rebase this merge?</source>
         <source>Rebase merge commit?</source>
         <target />
       </trans-unit>
+      <trans-unit id="_buttonFetch.Text">
+        <source>&amp;Fetch</source>
+        <target />
+      </trans-unit>
+      <trans-unit id="_buttonPull.Text">
+        <source>&amp;Pull</source>
+        <target />
+      </trans-unit>
       <trans-unit id="_dontShowAgain.Text">
         <source>Don't show me this message again.</source>
         <target />
@@ -5048,6 +5080,10 @@ Do you want to continue?</source>
       </trans-unit>
       <trans-unit id="_pruneFromCaption.Text">
         <source>Prune remote branches from {0}</source>
+        <target />
+      </trans-unit>
+      <trans-unit id="_pullFetchPruneAllConfirmation.Text">
+        <source>Warning! The fetch with prune will remove all the remote-tracking references which no longer exist on remotes. Do you want to proceed?</source>
         <target />
       </trans-unit>
       <trans-unit id="_questionInitSubmodules.Text">
@@ -7547,6 +7583,10 @@ This will just checkout on the submodule the commit determined by the superproje
   </file>
   <file datatype="plaintext" original="RecentRepositoriesList" source-language="en">
     <body>
+      <trans-unit id="_cannotOpenTheFolder.Text">
+        <source>Cannot open the folder</source>
+        <target />
+      </trans-unit>
       <trans-unit id="_clearRecentCategoryCaption.Text">
         <source>Clear recent repositories</source>
         <target />
@@ -7579,6 +7619,10 @@ Do you want to remove it from the recent repositories list?</source>
       </trans-unit>
       <trans-unit id="_groupRecentRepositories.Text">
         <source>Recent repositories</source>
+        <target />
+      </trans-unit>
+      <trans-unit id="_notAValidRepository.Text">
+        <source>Not a valid git repository</source>
         <target />
       </trans-unit>
       <trans-unit id="clmhdrBranch.Text">
@@ -7665,9 +7709,21 @@ To show all branches, right click the revision grid, select 'view' and then the 
       <trans-unit id="mnuBtnCheckoutTag.Text">
         <source>&amp;Checkout</source>
         <target />
+      </trans-unit> 
+      <trans-unit id="mnuBtnFetchAllRemotes.Text">
+        <source>Fetch all remotes</source>
+        <target />
       </trans-unit>
       <trans-unit id="mnuBtnManageRemotesFromRootNode.Text">
-        <source>&amp;Manage remotes...</source>
+        <source>&amp;Manage...</source>
+        <target />
+      </trans-unit>
+      <trans-unit id="mnuBtnPruneAllBranchesFromARemote.Text">
+        <source>Fetch and prune</source>
+        <target />
+      </trans-unit>
+      <trans-unit id="mnuBtnPruneAllRemotes.Text">
+        <source>Fetch and prune all remotes</source>
         <target />
       </trans-unit>
       <trans-unit id="mnubtnBranchCheckout.Text">
@@ -7743,11 +7799,19 @@ To show all branches, right click the revision grid, select 'view' and then the 
         <target />
       </trans-unit>
       <trans-unit id="mnubtnManageRemotes.Text">
-        <source>&amp;Manage remotes...</source>
+        <source>&amp;Manage...</source>
+        <target />
+      </trans-unit>
+      <trans-unit id="mnubtnManageSubmodules.Text">
+        <source>&amp;Manage...</source>
         <target />
       </trans-unit>
       <trans-unit id="mnubtnMergeBranch.Text">
         <source>&amp;Merge</source>
+        <target />
+      </trans-unit>
+      <trans-unit id="mnubtnOpenSubmodule.Text">
+        <source>&amp;Open</source>
         <target />
       </trans-unit>
       <trans-unit id="mnubtnPullFromRemoteBranch.Text">
@@ -7770,12 +7834,24 @@ To show all branches, right click the revision grid, select 'view' and then the 
         <source>Re&amp;set</source>
         <target />
       </trans-unit>
+      <trans-unit id="mnubtnSynchronizeSubmodules.Text">
+        <source>Synchronize</source>
+        <target />
+      </trans-unit>
+      <trans-unit id="mnubtnUpdateSubmodule.Text">
+        <source>&amp;Update</source>
+        <target />
+      </trans-unit>
       <trans-unit id="tsmiShowBranches.Text">
         <source>&amp;Branches</source>
         <target />
       </trans-unit>
       <trans-unit id="tsmiShowRemotes.Text">
         <source>&amp;Remotes</source>
+        <target />
+      </trans-unit>
+      <trans-unit id="tsmiShowSubmodules.Text">
+        <source>&amp;Submodules</source>
         <target />
       </trans-unit>
       <trans-unit id="tsmiShowTags.Text">
@@ -7838,8 +7914,20 @@ To show all branches, right click the revision grid, select 'view' and then the 
         <source>Delete file</source>
         <target />
       </trans-unit>
-      <trans-unit id="diffEditFileToolStripMenuItem.Text">
-        <source>Edit file</source>
+      <trans-unit id="diffEditWorkingDirectoryFileToolStripMenuItem.Text">
+        <source>Edit working directory file</source>
+        <target />
+      </trans-unit>
+      <trans-unit id="diffOpenRevisionFileToolStripMenuItem.Text">
+        <source>Open this revision (temp file)</source>
+        <target />
+      </trans-unit>
+      <trans-unit id="diffOpenRevisionFileWithToolStripMenuItem.Text">
+        <source>Open this revision with... (temp file)</source>
+        <target />
+      </trans-unit>
+      <trans-unit id="diffOpenWorkingDirectoryFileWithToolStripMenuItem.Text">
+        <source>Open working directory file with...</source>
         <target />
       </trans-unit>
       <trans-unit id="diffResetSubmoduleChanges.Text">
@@ -8397,7 +8485,7 @@ See the changes in the commit form.</source>
         <target />
       </trans-unit>
       <trans-unit id="openBuildReportToolStripMenuItem.Text">
-        <source>Open build report in the browser</source>
+        <source>View build report in a browser</source>
         <target />
       </trans-unit>
       <trans-unit id="rebaseInteractivelyToolStripMenuItem.Text">
@@ -8962,6 +9050,10 @@ Select this commit to populate the full message.</source>
       </trans-unit>
       <trans-unit id="_secondsAgo.Text">
         <source>{0} {1:second|seconds} ago</source>
+        <target />
+      </trans-unit>
+      <trans-unit id="_submodulesText.Text">
+        <source>Submodules</source>
         <target />
       </trans-unit>
       <trans-unit id="_tagsText.Text">

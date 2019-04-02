@@ -10,6 +10,7 @@ using GitCommands.Settings;
 using GitUI.CommandsDialogs;
 using GitUI.CommandsDialogs.RepoHosting;
 using GitUI.CommandsDialogs.SettingsDialog;
+using GitUI.HelperDialogs;
 using GitUIPluginInterfaces;
 using GitUIPluginInterfaces.RepositoryHosts;
 using JetBrains.Annotations;
@@ -173,6 +174,21 @@ namespace GitUI
                 });
         }
 
+        public bool StartResetCurrentBranchDialog(IWin32Window owner, string branch)
+        {
+            var objectId = Module.RevParse(branch);
+            if (objectId == null)
+            {
+                MessageBox.Show($"Branch \"{branch}\" could not be resolved.");
+                return false;
+            }
+
+            using (var form = new FormResetCurrentBranch(this, Module.GetRevision(objectId)))
+            {
+                return form.ShowDialog(owner) == DialogResult.OK;
+            }
+        }
+
         public bool StashSave(IWin32Window owner, bool includeUntrackedFiles, bool keepIndex = false, string message = "", IReadOnlyList<string> selectedFiles = null)
         {
             bool Action()
@@ -294,7 +310,10 @@ namespace GitUI
             }
             finally
             {
-                RepoChangedNotifier.UnLock(changesRepo && actionDone);
+                // The action may not have required a valid working directory to run, but if there isn't one,
+                // we shouldn't send a "repo changed" notify.
+                bool requestNotify = actionDone && changesRepo && Module.IsValidGitWorkingDir();
+                RepoChangedNotifier.UnLock(requestNotify);
             }
 
             return actionDone;
@@ -359,6 +378,18 @@ namespace GitUI
 
                 return true;
             });
+        }
+
+        public bool StartCreateBranchDialog(IWin32Window owner, string branch)
+        {
+            var objectId = Module.RevParse(branch);
+            if (objectId == null)
+            {
+                MessageBox.Show($"Branch \"{branch}\" could not be resolved.");
+                return false;
+            }
+
+            return StartCreateBranchDialog(owner, objectId);
         }
 
         public bool StartCreateBranchDialog(IWin32Window owner = null, ObjectId objectId = null)
@@ -534,7 +565,7 @@ namespace GitUI
                 using (var formPull = new FormPull(this, remoteBranch, remote, pullAction))
                 {
                     var dlgResult = pullOnShow
-                        ? formPull.PullAndShowDialogWhenFailed(owner)
+                        ? formPull.PullAndShowDialogWhenFailed(owner, remote, pullAction)
                         : formPull.ShowDialog(owner);
 
                     if (dlgResult == DialogResult.OK)
@@ -954,13 +985,15 @@ namespace GitUI
         }
 
         /// <param name="preselectRemote">makes the FormRemotes initially select the given remote</param>
-        public bool StartRemotesDialog(IWin32Window owner, string preselectRemote = null)
+        /// <param name="preselectLocal">makes the FormRemotes initially show tab "Default push behavior" and select the given local</param>
+        public bool StartRemotesDialog(IWin32Window owner, string preselectRemote = null, string preselectLocal = null)
         {
             bool Action()
             {
                 using (var form = new FormRemotes(this))
                 {
                     form.PreselectRemoteOnLoad = preselectRemote;
+                    form.PreselectLocalOnLoad = preselectLocal;
                     form.ShowDialog(owner);
                 }
 
@@ -1045,11 +1078,22 @@ namespace GitUI
             return DoActionOnRepo(owner, true, true, null, null, Action);
         }
 
-        public bool StartUpdateSubmodulesDialog(IWin32Window owner)
+        public bool StartUpdateSubmodulesDialog(IWin32Window owner, string submoduleLocalPath = "")
         {
             bool Action()
             {
-                return FormProcess.ShowDialog(owner, Module, GitCommandHelpers.SubmoduleUpdateCmd(""));
+                return FormProcess.ShowDialog(owner, Module, GitCommandHelpers.SubmoduleUpdateCmd(submoduleLocalPath));
+            }
+
+            return DoActionOnRepo(owner, true, true, null, PostUpdateSubmodules, Action);
+        }
+
+        public bool StartUpdateSubmoduleDialog(IWin32Window owner, string submoduleLocalPath, string submoduleParentPath)
+        {
+            bool Action()
+            {
+                // Execute the submodule update comment from the submodule's parent directory
+                return FormProcess.ShowDialog(owner, null, GitCommandHelpers.SubmoduleUpdateCmd(submoduleLocalPath), submoduleParentPath, null, true);
             }
 
             return DoActionOnRepo(owner, true, true, null, PostUpdateSubmodules, Action);
@@ -1799,6 +1843,11 @@ namespace GitUI
         public void BrowseGoToRef(string refName, bool showNoRevisionMsg)
         {
             BrowseRepo?.GoToRef(refName, showNoRevisionMsg);
+        }
+
+        public void BrowseSetWorkingDir(string path)
+        {
+            BrowseRepo?.SetWorkingDir(path);
         }
 
         public IGitRemoteCommand CreateRemoteCommand()

@@ -1,4 +1,4 @@
-Git Extensions Project Contributors Certification of Origin and Rights
+﻿Git Extensions Project Contributors Certification of Origin and Rights
 
 All contributors to Git Extensions must formally agree to abide by this
 certificate of origin by signing on the bottom with their github
@@ -67,3 +67,16 @@ YYYY/MM/DD, github id, Full name, email
 2019/01/30, markonius, Marko Bakšić, markonius@protonmail.ch
 2019/02/07, crypto-rsa, Pavel Kotrč, pkotrc@gmail.com
 2019/02/09, glen-nicol, Glen Nicol, glen.nicol@live.com
+2019/02/16, mdonatas, Donatas Mačiūnas, mdonatas@gmail.com
+2019/02/16, DmitryZhelnin, Dmitry Zhelnin, mitya_zh@mail.ru
+2019/02/18, wachulski, Marcin Wachulski, marcin.wachulski@gmail.com
+2019/02/25, oriash93, Ori Ashual, oriash93@gmail.com
+2019/02/25, coreyasmith, Corey Smith, coreyas@gmail.com
+2019/02/27, ivangrek, Ivan Grek, kvant@outlook.com
+2019/02/28, leorohr, Leo Rohr, rohrleo@gmail.com
+2019/03/02, seshonaar, Andrei Balint, andrei.balint@gmail.com
+2019/03/04, DeadDuck, Onur Safak, onur.safak@radity.com
+2019/03/12, Carl-Hugo, Carl-Hugo Marcotte, carlhugo@gmail.com
+2019/03/20, ignacioerrico, Ignacio Errico, ignacio.errico@gmail.com
+2019/03/24, fschmied, Fabian Schmied, fabian.schmied(at)gmail.com
+2019/03/29, realkompot, Andrei Matsei, therealkompot@gmail.com

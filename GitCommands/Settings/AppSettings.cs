@@ -1262,28 +1262,10 @@ namespace GitCommands
             set => SetString("lastformatpatchdir", value);
         }
 
-        public static bool IgnoreWhitespaceChanges
+        public static IgnoreWhitespaceKind IgnoreWhitespaceKind
         {
-            get => RememberIgnoreWhiteSpacePreference && GetBool("IgnoreWhitespaceChanges", false);
-            set
-            {
-                if (RememberIgnoreWhiteSpacePreference)
-                {
-                    SetBool("IgnoreWhitespaceChanges", value);
-                }
-            }
-        }
-
-        public static bool IgnoreAllWhitespaceChanges
-        {
-            get => RememberIgnoreWhiteSpacePreference && GetBool("IgnoreAllWhitespaceChanges", false);
-            set
-            {
-                if (RememberIgnoreWhiteSpacePreference)
-                {
-                    SetBool("IgnoreAllWhitespaceChanges", value);
-                }
-            }
+            get => GetEnum("IgnoreWhitespaceKind", IgnoreWhitespaceKind.None);
+            set => SetEnum("IgnoreWhitespaceKind", value);
         }
 
         public static bool RememberIgnoreWhiteSpacePreference
@@ -1546,6 +1528,12 @@ namespace GitCommands
             set => SetBool("UseConsoleEmulatorForCommands", value);
         }
 
+        public static DiffListSortType DiffListSorting
+        {
+            get => GetEnum("DiffListSortType", DiffListSortType.FilePath);
+            set => SetEnum("DiffListSortType", value);
+        }
+
         public static string GetGitExtensionsFullPath()
         {
             return Application.ExecutablePath;
@@ -1589,6 +1577,36 @@ namespace GitCommands
         {
             get => GetBool("RepoObjectsTree.ShowTags", false);
             set => SetBool("RepoObjectsTree.ShowTags", value);
+        }
+
+        public static bool RepoObjectsTreeShowSubmodules
+        {
+            get => GetBool("RepoObjectsTree.ShowSubmodules", true);
+            set => SetBool("RepoObjectsTree.ShowSubmodules", value);
+        }
+
+        public static int RepoObjectsTreeBranchesIndex
+        {
+            get => GetInt("RepoObjectsTree.BranchesIndex", 0);
+            set => SetInt("RepoObjectsTree.BranchesIndex", value);
+        }
+
+        public static int RepoObjectsTreeRemotesIndex
+        {
+            get => GetInt("RepoObjectsTree.RemotesIndex", 1);
+            set => SetInt("RepoObjectsTree.RemotesIndex", value);
+        }
+
+        public static int RepoObjectsTreeTagsIndex
+        {
+            get => GetInt("RepoObjectsTree.TagsIndex", 2);
+            set => SetInt("RepoObjectsTree.TagsIndex", value);
+        }
+
+        public static int RepoObjectsTreeSubmodulesIndex
+        {
+            get => GetInt("RepoObjectsTree.SubmodulesIndex", 3);
+            set => SetInt("RepoObjectsTree.SubmodulesIndex", value);
         }
 
         public static bool IsPortable()

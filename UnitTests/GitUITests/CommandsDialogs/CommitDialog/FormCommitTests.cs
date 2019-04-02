@@ -83,6 +83,54 @@ namespace GitUITests.CommandsDialogs.CommitDialog
         }
 
         [Test]
+        public void Should_display_branch_and_no_remote_info_in_statusbar()
+        {
+            _referenceRepository.CheckoutMaster();
+            RunFormTest(async form =>
+            {
+                await ThreadHelper.JoinPendingOperationsAsync();
+
+                var currentBranchNameLabelStatus = form.GetTestAccessor().CurrentBranchNameLabelStatus;
+                var remoteNameLabelStatus = form.GetTestAccessor().RemoteNameLabelStatus;
+
+                Assert.AreEqual("master →", currentBranchNameLabelStatus.Text);
+                Assert.AreEqual("(remote not configured)", remoteNameLabelStatus.Text);
+            });
+        }
+
+        [Test]
+        public void Should_display_detached_head_info_in_statusbar()
+        {
+            _referenceRepository.CheckoutRevision();
+            RunFormTest(async form =>
+            {
+                await ThreadHelper.JoinPendingOperationsAsync();
+
+                var currentBranchNameLabelStatus = form.GetTestAccessor().CurrentBranchNameLabelStatus;
+                var remoteNameLabelStatus = form.GetTestAccessor().RemoteNameLabelStatus;
+
+                Assert.AreEqual("(no branch)", currentBranchNameLabelStatus.Text);
+                Assert.AreEqual(string.Empty, remoteNameLabelStatus.Text);
+            });
+        }
+
+        [Test]
+        public void Should_display_branch_and_remote_info_in_statusbar()
+        {
+            _referenceRepository.CreateRemoteForMasterBranch();
+            RunFormTest(async form =>
+            {
+                await ThreadHelper.JoinPendingOperationsAsync();
+
+                var currentBranchNameLabelStatus = form.GetTestAccessor().CurrentBranchNameLabelStatus;
+                var remoteNameLabelStatus = form.GetTestAccessor().RemoteNameLabelStatus;
+
+                Assert.AreEqual("master →", currentBranchNameLabelStatus.Text);
+                Assert.AreEqual("origin/master", remoteNameLabelStatus.Text);
+            });
+        }
+
+        [Test]
         public void PreserveCommitMessageOnReopen()
         {
             var generatedCommitMessage = Guid.NewGuid().ToString();
@@ -202,7 +250,7 @@ namespace GitUITests.CommandsDialogs.CommitDialog
                 ta.Message.Text = message;
                 ta.Message.SelectionStart = selectionStart;
                 ta.Message.SelectionLength = selectionLength;
-                ta.ExecuteCommand(FormCommit.Command.AddSelectionToCommitMessage).Should().Be(expectedResult);
+                ta.ExecuteCommand(FormCommit.Command.AddSelectionToCommitMessage).Should().Be((GitCommands.CommandStatus)expectedResult);
                 ta.Message.Text.Should().Be(expectedMessage);
                 ta.Message.SelectionStart.Should().Be(expectedSelectionStart);
                 ta.Message.SelectionLength.Should().Be(expectedResult ? 0 : selectionLength);

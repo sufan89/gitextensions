@@ -8,6 +8,7 @@ using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Git;
 using GitCommands.UserRepositoryHistory;
+using GitUI.UserControls;
 using GitUIPluginInterfaces.RepositoryHosts;
 using JetBrains.Annotations;
 using Microsoft.VisualStudio.Threading;
@@ -36,6 +37,7 @@ namespace GitUI.CommandsDialogs.RepoHosting
         private readonly TranslationString _strSearching = new TranslationString(" : SEARCHING : ");
         private readonly TranslationString _strSelectOneItem = new TranslationString("You must select exactly one item");
         private readonly TranslationString _strCloneFolderCanNotBeEmpty = new TranslationString("Clone folder can not be empty");
+
         #endregion
 
         private readonly IRepositoryHostPlugin _gitHoster;
@@ -114,6 +116,8 @@ namespace GitUI.CommandsDialogs.RepoHosting
                                 }
                             });
                         }
+
+                        ResizeColumnsToFitContent(myReposLV);
                     }
                     catch (Exception ex) when (!(ex is OperationCanceledException))
                     {
@@ -125,6 +129,16 @@ namespace GitUI.CommandsDialogs.RepoHosting
                     }
                 })
                 .FileAndForget();
+        }
+
+        private void ResizeColumnsToFitContent(NativeListView list)
+        {
+            var resizeStrategy = list.Items.Count == 0 ? -2 : -1;
+
+            foreach (ColumnHeader column in list.Columns)
+            {
+                column.Width = resizeStrategy;
+            }
         }
 
         #region GUI Handlers
@@ -232,6 +246,8 @@ namespace GitUI.CommandsDialogs.RepoHosting
                     }
                 });
             }
+
+            ResizeColumnsToFitContent(searchResultsLV);
 
             searchBtn.Enabled = true;
         }
@@ -363,7 +379,7 @@ namespace GitUI.CommandsDialogs.RepoHosting
 
             string repoSrc = repo.CloneReadWriteUrl;
 
-            var cmd = GitCommandHelpers.CloneCmd(repoSrc, targetDir);
+            var cmd = GitCommandHelpers.CloneCmd(repoSrc, targetDir, depth: GetDepth());
 
             var formRemoteProcess = new FormRemoteProcess(new GitModule(null), AppSettings.GitCommand, cmd)
             {
@@ -489,6 +505,16 @@ namespace GitUI.CommandsDialogs.RepoHosting
 
             targetDir = Path.Combine(targetDir, createDirTB.Text);
             return targetDir;
+        }
+
+        private int? GetDepth()
+        {
+            if (depthUpDown.Value != 0)
+            {
+                return (int)depthUpDown.Value;
+            }
+
+            return null;
         }
 
         private void _destinationTB_Validating(object sender, System.ComponentModel.CancelEventArgs e)
